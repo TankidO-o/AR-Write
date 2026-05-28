@@ -47,7 +47,7 @@ export class OneEuroFilter {
     const alpha = this._alpha(cutoff);
     const result = this.x_filter.filter(x, alpha);
 
-    this.last_x = result;
+    this.last_x = x;
     this.last_t = t;
     return result;
   }
