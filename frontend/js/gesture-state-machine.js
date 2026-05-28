@@ -43,9 +43,12 @@ export class GestureStateMachine {
 
     this.indexTrajectory = [];
     this.circleAngularSum = 0;
+    this.angleBuffer = [];
 
-    this.pinchFilter = new OneEuroFilter();
-    this.eraseFilter = new OneEuroFilter();
+    this.pinchFilterX = new OneEuroFilter();
+    this.pinchFilterY = new OneEuroFilter();
+    this.eraseFilterX = new OneEuroFilter();
+    this.eraseFilterY = new OneEuroFilter();
 
     // Callbacks set by App
     this.onGestureChange = null;   // (newGesture, prevGesture)
@@ -137,6 +140,7 @@ export class GestureStateMachine {
     if (!(indexExtended && middleFolded && ringFolded && pinkyFolded)) {
       this.indexTrajectory = [];
       this.circleAngularSum = 0;
+      this.angleBuffer = [];
       return false;
     }
 
@@ -154,12 +158,13 @@ export class GestureStateMachine {
     const angle = Math.abs(Math.atan2(cross, dot));
 
     this.circleAngularSum += angle;
+    this.angleBuffer.push(angle);
 
     if (this.indexTrajectory.length > 30) {
-      const oldest = this.indexTrajectory.shift();
-      const oldestV = { x: this.indexTrajectory[0].x - oldest.x, y: this.indexTrajectory[0].y - oldest.y };
-      const oldestCross = oldestV.x * v2.y - oldestV.y * v2.x;
-      this.circleAngularSum -= Math.abs(Math.atan2(oldestCross, oldestV.x * v2.x + oldestV.y * v2.y));
+      this.indexTrajectory.shift();
+    }
+    if (this.angleBuffer.length > 30) {
+      this.circleAngularSum -= this.angleBuffer.shift();
     }
 
     return this.circleAngularSum >= Math.PI; // 180 degrees
@@ -190,13 +195,16 @@ export class GestureStateMachine {
     if (this.state !== Gesture.SWITCH) {
       this.indexTrajectory = [];
       this.circleAngularSum = 0;
+      this.angleBuffer = [];
     }
 
     if (this.state !== Gesture.WRITE) {
-      this.pinchFilter.reset();
+      this.pinchFilterX.reset();
+      this.pinchFilterY.reset();
     }
     if (this.state !== Gesture.ERASE) {
-      this.eraseFilter.reset();
+      this.eraseFilterX.reset();
+      this.eraseFilterY.reset();
     }
 
     if (this.onGestureChange) {
@@ -209,14 +217,14 @@ export class GestureStateMachine {
       case Gesture.WRITE: {
         const midX = (kp[TIP.THUMB].x + kp[TIP.INDEX].x) / 2;
         const midY = (kp[TIP.THUMB].y + kp[TIP.INDEX].y) / 2;
-        const sx = this.pinchFilter.filter(midX, ts / 1000);
-        const sy = this.pinchFilter.filter(midY, ts / 1000);
+        const sx = this.pinchFilterX.filter(midX, ts / 1000);
+        const sy = this.pinchFilterY.filter(midY, ts / 1000);
         if (this.onWritePoint) this.onWritePoint({ x: sx, y: sy });
         break;
       }
       case Gesture.ERASE: {
-        const ex = this.eraseFilter.filter(pc.x, ts / 1000);
-        const ey = this.eraseFilter.filter(pc.y, ts / 1000);
+        const ex = this.eraseFilterX.filter(pc.x, ts / 1000);
+        const ey = this.eraseFilterY.filter(pc.y, ts / 1000);
         if (this.onEraseAt) this.onEraseAt({ x: ex, y: ey });
         break;
       }
