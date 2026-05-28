@@ -4,12 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AR 手势书写</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%230a0a14'/%3E%3Cpath d='M18 44c0-12 4-18 8-22l2-8c0-2 3-2 4 0l0 8 3 0 0-12c0-2 3-2 4 0l0 12 3 0 0-6c0-2 3-2 4 0l0 14c0 8-5 14-12 14h-4c-7 0-12-4-12-8z' fill='%23fff' fill-opacity='0.82'/%3E%3Cpath d='M42 20c4-2 10 0 12 6' stroke='%2300ff88' stroke-width='2.2' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='54' cy='26' r='2.2' fill='%2300ff88'/%3E%3Ccircle cx='58' cy='30' r='1.4' fill='%2300ff88' opacity='0.6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
   <div id="video-container">
     <video id="webcam" autoplay playsinline></video>
+    <canvas id="layer-skeleton"></canvas>
     <canvas id="layer-history"></canvas>
     <canvas id="layer-active"></canvas>
     <canvas id="layer-cursor"></canvas>

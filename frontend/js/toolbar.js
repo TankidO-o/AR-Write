@@ -66,4 +66,16 @@ export class Toolbar {
       if (this.onSave) this.onSave();
     });
   }
+
+  // Sync toolbar UI when color changes externally (e.g. SWITCH gesture)
+  syncActiveColor(color) {
+    this.selectedColor = color;
+    const el = document.getElementById('toolbar');
+    if (!el) return;
+    el.querySelectorAll('.tb-color-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.color === color);
+    });
+    const picker = el.querySelector('.tb-color-picker');
+    if (picker) picker.value = color;
+  }
 }

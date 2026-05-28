@@ -2,6 +2,14 @@ import cv2
 import sys
 import threading
 
+_WINDOWS_CAMERA_HELP = (
+    "Windows camera permission is blocked. Check:\n"
+    "  1. Settings > Privacy & security > Camera > 'Camera access' = ON\n"
+    "  2. Settings > Privacy & security > Camera > 'Let apps access your camera' = ON\n"
+    "  3. Ensure no other application is using the camera\n"
+    "  4. Try a different device_id (e.g. 0, 1, 2)"
+)
+
 class Camera:
     _instance = None
     _lock = threading.Lock()
@@ -22,15 +30,26 @@ class Camera:
     def start(self, device_id=0, width=640, height=480, fps=30):
         with self._cap_lock:
             self._release_cap()
-            backend = cv2.CAP_DSHOW if sys.platform == 'win32' else cv2.CAP_ANY
-            self._cap = cv2.VideoCapture(device_id, backend)
-            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-            self._cap.set(cv2.CAP_PROP_FPS, fps)
-            if not self._cap.isOpened():
+            if sys.platform == 'win32':
+                backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF]
+            else:
+                backends = [cv2.CAP_ANY]
+
+            last_err = None
+            for backend in backends:
+                self._cap = cv2.VideoCapture(device_id, backend)
+                self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                self._cap.set(cv2.CAP_PROP_FPS, fps)
+                if self._cap.isOpened():
+                    return self
                 self._cap.release()
                 self._cap = None
-                raise RuntimeError(f"Cannot open camera device {device_id}")
+
+            msg = f"Cannot open camera device {device_id}"
+            if sys.platform == 'win32':
+                msg += f"\n{_WINDOWS_CAMERA_HELP}"
+            raise RuntimeError(msg)
         return self
 
     def read_frame(self):

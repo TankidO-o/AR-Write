@@ -1,8 +1,11 @@
 import asyncio
 import json
 import time
+import threading
+import cv2
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from camera import Camera
 from hand_detector import HandDetector
 import uvicorn
@@ -12,6 +15,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 camera = Camera()
 detector = HandDetector()
+
+# Shared JPEG buffer — written by main loop, read by /frame endpoint
+_latest_jpeg = None
+_jpeg_lock = threading.Lock()
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
@@ -46,6 +53,13 @@ async def websocket_endpoint(ws: WebSocket):
                 await asyncio.sleep(backoff)
                 continue
             fail_count = 0
+
+            # Encode frame as JPEG for the /frame endpoint (preview on frontend)
+            _, jpeg = cv2.imencode('.jpg', cv2.cvtColor(frame, cv2.COLOR_RGB2BGR),
+                                    [cv2.IMWRITE_JPEG_QUALITY, 60])
+            with _jpeg_lock:
+                global _latest_jpeg
+                _latest_jpeg = jpeg.tobytes()
 
             timestamp_ms = int(time.time() * 1000)
             hand_data = await asyncio.to_thread(detector.detect, frame, timestamp_ms)
@@ -91,6 +105,14 @@ async def websocket_endpoint(ws: WebSocket):
 @app.get("/health")
 async def health():
     return {"status": "ok", "camera": camera.is_opened}
+
+@app.get("/frame")
+async def get_frame():
+    """Serve the latest camera frame as JPEG (for frontend preview)."""
+    with _jpeg_lock:
+        if _latest_jpeg is None:
+            return Response(status_code=204)  # No Content — no frame yet
+        return Response(content=_latest_jpeg, media_type="image/jpeg")
 
 def main():
     try:
