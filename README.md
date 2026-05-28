@@ -55,6 +55,14 @@ python -m http.server 8080
 | 拇指与中指捏合 | 切换颜色 |
 | 比耶手势保持 1 秒 | 撤销 |
 
+## 自定义手势
+
+点击工具栏 ⚡ 按钮打开自定义手势面板：
+
+- **覆写**：用你自己的标定数据（10 次采样）覆盖内置手势
+- **新建**：通过模板匹配创建自定义手势（3 次采样）
+- 调整每个手势的**触发阈值**（40–95）并保存到本地
+
 ## 项目结构
 
 ```
@@ -65,5 +73,5 @@ docs/       方案书与实施计划
 
 ## 技术栈
 
-Python: OpenCV, MediaPipe Hands, FastAPI, WebSocket
-前端: HTML5 Canvas 2D, WebSocket API, getUserMedia
+**后端**: Python, OpenCV, MediaPipe Hands, FastAPI, WebSocket
+**前端**: HTML5 Canvas 2D, WebSocket API, getUserMedia
