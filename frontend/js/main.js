@@ -17,7 +17,12 @@ class App {
   }
 
   async start() {
-    await this.video.start();
+    try {
+      await this.video.start();
+    } catch (e) {
+      console.warn('Camera not available, continuing without video preview:', e.message);
+      document.getElementById('video-container').style.background = '#111';
+    }
 
     this.toolbar.render('toolbar');
     this.toolbar.onColorChange = (c) => this.draw.setColor(c);
@@ -116,4 +121,7 @@ class App {
 }
 
 const app = new App();
-app.start();
+app.start().catch(err => {
+  console.error('App failed to start:', err);
+  document.getElementById('fps-display').textContent = 'Error';
+});
