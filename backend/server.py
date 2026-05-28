@@ -12,15 +12,14 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 camera = Camera()
 detector = HandDetector()
-running = False
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
-    global running
     await ws.accept()
     running = True
     last_frame_time = time.time()
     frame_count = 0
+    fail_count = 0
     fps = 0.0
 
     # Handle incoming messages (heartbeat pings)
@@ -40,13 +39,16 @@ async def websocket_endpoint(ws: WebSocket):
         while running:
             frame_start = time.time()
 
-            frame = camera.read_frame()
+            frame = await asyncio.to_thread(camera.read_frame)
             if frame is None:
-                await asyncio.sleep(0.001)
+                fail_count += 1
+                backoff = min(0.001 * (2 ** min(fail_count, 10)), 0.1)
+                await asyncio.sleep(backoff)
                 continue
+            fail_count = 0
 
             timestamp_ms = int(time.time() * 1000)
-            hand_data = detector.detect(frame, timestamp_ms)
+            hand_data = await asyncio.to_thread(detector.detect, frame, timestamp_ms)
 
             frame_count += 1
             now = time.time()
@@ -77,6 +79,10 @@ async def websocket_endpoint(ws: WebSocket):
     finally:
         running = False
         recv_task.cancel()
+        try:
+            await recv_task
+        except asyncio.CancelledError:
+            pass
         try:
             await ws.close()
         except Exception:
