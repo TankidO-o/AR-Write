@@ -1,6 +1,8 @@
 # AR 手势书写交互系统
 
-基于计算机视觉的隔空手势书写系统。通过电脑摄像头识别手部关键点，在实时视频画面上叠加书写笔迹。
+> An AR gesture-based writing and drawing system powered by computer vision. Use hand gestures in mid-air to write, erase, undo, switch colors, and clear the canvas — no touch, no stylus, just your webcam.
+
+基于计算机视觉的隔空手势书写系统。通过摄像头识别手部关键点，在空气中用不同手势完成书写、擦除、撤销、切换颜色和清空画布等操作。
 
 ## 快速开始
 
@@ -50,8 +52,8 @@ python -m http.server 8080
 | 拇指与食指捏合 | 书写 |
 | 五指张开 | 擦除 |
 | 握拳保持 1 秒 | 清空画布 |
-| 食指伸出画圈 | 切换颜色 |
-| 食指+小指伸出（摇滚手势） | 撤销 |
+| 拇指与中指捏合 | 切换颜色 |
+| 比耶手势保持 1 秒 | 撤销 |
 
 ## 项目结构
 
