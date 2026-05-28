@@ -40,6 +40,8 @@ export class GestureStateMachine {
     this.idleCounter = 0;
     this.lastSwitchTime = 0;
     this.clearStartTime = null;
+    this.pendingGesture = null;
+    this.pendingCounter = 0;
 
     this.indexTrajectory = [];
     this.circleAngularSum = 0;
@@ -84,11 +86,22 @@ export class GestureStateMachine {
 
     if (detected === this.state) {
       this.debounceCounter = Math.min(this.debounceCounter + 1, this.debounceFrames);
+      this.pendingGesture = null;
+      this.pendingCounter = 0;
       this._handleStateAction(kp, pc, timestampMs);
-    } else if (this.debounceCounter >= this.debounceFrames) {
-      this._transition(detected);
     } else {
-      this.debounceCounter = 0;
+      // Track consecutive frames of the SAME new gesture
+      if (detected === this.pendingGesture) {
+        this.pendingCounter++;
+        if (this.pendingCounter >= this.debounceFrames) {
+          this._transition(detected);
+          this.pendingGesture = null;
+          this.pendingCounter = 0;
+        }
+      } else {
+        this.pendingGesture = detected;
+        this.pendingCounter = 1;
+      }
     }
   }
 
