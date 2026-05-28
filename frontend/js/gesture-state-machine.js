@@ -43,10 +43,6 @@ export class GestureStateMachine {
     this.pendingGesture = null;
     this.pendingCounter = 0;
 
-    this.indexTrajectory = [];
-    this.circleAngularSum = 0;
-    this.angleBuffer = [];
-
     this.pinchFilterX = new OneEuroFilter();
     this.pinchFilterY = new OneEuroFilter();
     this.eraseFilterX = new OneEuroFilter();
@@ -114,7 +110,7 @@ export class GestureStateMachine {
       case Gesture.ERASE:
         return this._isOpenPalm(kp);
       case Gesture.SWITCH:
-        return this._isCircling(kp, ts);
+        return this._isSwitchPinch(kp);
       case Gesture.UNDO:
         return this._isRock(kp);
       default:
@@ -144,43 +140,12 @@ export class GestureStateMachine {
            isFingerExtended(kp[TIP.PINKY], kp[PIP.PINKY]);
   }
 
-  _isCircling(kp, ts) {
-    const indexExtended = isFingerExtended(kp[TIP.INDEX], kp[PIP.INDEX]);
-    const middleFolded = !isFingerExtended(kp[TIP.MIDDLE], kp[PIP.MIDDLE]);
-    const ringFolded = !isFingerExtended(kp[TIP.RING], kp[PIP.RING]);
-    const pinkyFolded = !isFingerExtended(kp[TIP.PINKY], kp[PIP.PINKY]);
-
-    if (!(indexExtended && middleFolded && ringFolded && pinkyFolded)) {
-      this.indexTrajectory = [];
-      this.circleAngularSum = 0;
-      this.angleBuffer = [];
-      return false;
-    }
-
-    const pt = kp[TIP.INDEX];
-    this.indexTrajectory.push({ x: pt.x, y: pt.y, t: ts });
-
-    if (this.indexTrajectory.length < 3) return false;
-
-    const recent = this.indexTrajectory.slice(-3);
-    const v1 = { x: recent[1].x - recent[0].x, y: recent[1].y - recent[0].y };
-    const v2 = { x: recent[2].x - recent[1].x, y: recent[2].y - recent[1].y };
-
-    const cross = v1.x * v2.y - v1.y * v2.x;
-    const dot = v1.x * v2.x + v1.y * v2.y;
-    const angle = Math.abs(Math.atan2(cross, dot));
-
-    this.circleAngularSum += angle;
-    this.angleBuffer.push(angle);
-
-    if (this.indexTrajectory.length > 30) {
-      this.indexTrajectory.shift();
-    }
-    if (this.angleBuffer.length > 30) {
-      this.circleAngularSum -= this.angleBuffer.shift();
-    }
-
-    return this.circleAngularSum >= Math.PI; // 180 degrees
+  _isSwitchPinch(kp) {
+    const d = dist2d(kp[TIP.THUMB], kp[TIP.MIDDLE]);
+    return d < this.pinchThreshold &&
+           isFingerExtended(kp[TIP.INDEX], kp[PIP.INDEX]) &&
+           !isFingerExtended(kp[TIP.RING], kp[PIP.RING]) &&
+           !isFingerExtended(kp[TIP.PINKY], kp[PIP.PINKY]);
   }
 
   _isRock(kp) {
@@ -203,12 +168,6 @@ export class GestureStateMachine {
       this.clearStartTime = now;
     } else {
       this.clearStartTime = null;
-    }
-
-    if (this.state !== Gesture.SWITCH) {
-      this.indexTrajectory = [];
-      this.circleAngularSum = 0;
-      this.angleBuffer = [];
     }
 
     if (this.state !== Gesture.WRITE) {
