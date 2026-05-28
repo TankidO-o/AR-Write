@@ -21,7 +21,13 @@ class App {
       await this.video.start();
     } catch (e) {
       console.warn('Camera not available, continuing without video preview:', e.message);
-      document.getElementById('video-container').style.background = '#111';
+      const vc = document.getElementById('video-container');
+      vc.style.background = '#111';
+      const msg = document.createElement('div');
+      msg.id = 'camera-msg';
+      msg.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666;font-size:18px;z-index:10;text-align:center;';
+      msg.innerHTML = '摄像头未检测到<br><small style="color:#444">手势数据由后端摄像头处理，请确认后端已启动</small>';
+      vc.appendChild(msg);
     }
 
     this.toolbar.render('toolbar');
