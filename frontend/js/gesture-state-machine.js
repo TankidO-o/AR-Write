@@ -120,8 +120,7 @@ export class GestureStateMachine {
 
     // Clear: hold fist for 1000 ms
     this.clearHoldMs = 1000;
-    // Undo: quick pinch-open pulse (< 300 ms, no stroke drawn)
-    this.undoPulseMaxMs = 300;
+    // Undo: quick pulse (< 6 frames) with 500ms cooldown
     this.undoDeadZoneMs = 500;
 
     this.state = Gesture.IDLE;
@@ -134,7 +133,7 @@ export class GestureStateMachine {
     this.pendingCounter = 0;
 
     this._writeStartTime = null;
-    this._writeStartedStroke = false;
+    this._writeFrameCount = 0;
     this._lastUndoTime = 0;
 
     this.pinchFilterX = new OneEuroFilter();
@@ -269,12 +268,10 @@ export class GestureStateMachine {
       this.onGestureChange(this.state, this.prevState);
     }
 
-    // Check for undo pulse: quick pinch-open without drawing
+    // Check for undo pulse: very brief WRITE (< 6 frames, ~200ms) → IDLE
     if (this.prevState === Gesture.WRITE && newState === Gesture.IDLE) {
-      const pulseDuration = now - this._writeStartTime;
-      if (this._writeStartTime !== null &&
-          pulseDuration < this.undoPulseMaxMs &&
-          !this._writeStartedStroke &&
+      if (this._writeFrameCount > 0 &&
+          this._writeFrameCount < 6 &&
           now - this._lastUndoTime > this.undoDeadZoneMs) {
         this._lastUndoTime = now;
         if (this.onUndo) this.onUndo();
@@ -283,11 +280,11 @@ export class GestureStateMachine {
     // Reset write tracking
     if (newState !== Gesture.WRITE) {
       this._writeStartTime = null;
-      this._writeStartedStroke = false;
+      this._writeFrameCount = 0;
     }
     if (newState === Gesture.WRITE) {
       this._writeStartTime = now;
-      this._writeStartedStroke = false;
+      this._writeFrameCount = 0;
     }
   }
 
@@ -300,7 +297,7 @@ export class GestureStateMachine {
         const sy = this.pinchFilterY.filter(midY, ts / 1000);
         if (this.onWritePoint) {
           this.onWritePoint({ x: sx, y: sy });
-          this._writeStartedStroke = true;
+          this._writeFrameCount++;
         }
         break;
       }
