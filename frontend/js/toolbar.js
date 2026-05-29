@@ -20,6 +20,7 @@ export class Toolbar {
     this.onRedo = null;
     this.onCalibrate = null;
     this.onCustomGestures = null;
+    this.onBackgroundToggle = null;
   }
 
   render(containerId) {
@@ -73,6 +74,9 @@ export class Toolbar {
           <button class="tb-btn" title="重做" id="tb-redo">↪</button>
           <button class="tb-btn" title="清空画布" id="tb-clear">✕</button>
           <button class="tb-btn" title="截图保存" id="tb-save">💾</button>
+        </div>
+        <div class="tb-actions" style="margin-top:4px;">
+          <button class="tb-btn tb-bg-btn" title="切换黑板/白板" id="tb-bg-toggle">🖼️ 黑板</button>
         </div>
       </div>
 
@@ -146,6 +150,16 @@ export class Toolbar {
     // Gesture buttons
     el.querySelector('#tb-calibrate').addEventListener('click', () => { if (this.onCalibrate) this.onCalibrate(); });
     el.querySelector('#tb-custom-gestures').addEventListener('click', () => { if (this.onCustomGestures) this.onCustomGestures(); });
+
+    // Background toggle
+    el.querySelector('#tb-bg-toggle').addEventListener('click', () => {
+      if (this.onBackgroundToggle) this.onBackgroundToggle();
+    });
+  }
+
+  updateBgButton(isDark) {
+    const btn = document.getElementById('tb-bg-toggle');
+    if (btn) btn.textContent = isDark ? '🖼️ 黑板' : '🖼️ 白板';
   }
 
   _updateSwatchActive(el, color) {

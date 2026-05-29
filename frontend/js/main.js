@@ -29,9 +29,15 @@ class App {
   setBackground(bgColor) {
     this._bgColor = bgColor;
     const vc = document.getElementById('video-container');
-    if (vc) {
-      vc.style.background = bgColor === 'transparent' ? 'transparent' : bgColor;
-    }
+    if (vc) vc.style.background = bgColor === 'transparent' ? 'transparent' : bgColor;
+    this.toolbar.updateBgButton(bgColor === '#000000');
+  }
+
+  _toggleBackground() {
+    const next = this._bgColor === '#000000' ? '#ffffff' : '#000000';
+    this.setBackground(next);
+    const label = next === '#000000' ? '黑板' : '白板';
+    this.feedback.showActionToast('🖼️', `切换为${label}`, '#ffaa00', 800);
   }
 
   async start() {
@@ -96,6 +102,7 @@ class App {
     this.toolbar.onRedo = () => this.draw.redo();
     this.toolbar.onCalibrate = () => this._runCalibration();
     this.toolbar.onCustomGestures = () => this.customGestures.showPanel();
+    this.toolbar.onBackgroundToggle = () => this._toggleBackground();
 
     this.gesture.onGestureChange = (g, prev) => {
       document.getElementById('gesture-display').textContent = g;
@@ -371,6 +378,22 @@ class App {
       ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // Crosshair at index fingertip (landmark 8)
+    const idx = pt(8);
+    const cr = 8; // crosshair radius
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1;
+    // vertical line
+    ctx.beginPath();
+    ctx.moveTo(idx.x, idx.y - cr);
+    ctx.lineTo(idx.x, idx.y + cr);
+    ctx.stroke();
+    // horizontal line
+    ctx.beginPath();
+    ctx.moveTo(idx.x - cr, idx.y);
+    ctx.lineTo(idx.x + cr, idx.y);
+    ctx.stroke();
   }
 
 }

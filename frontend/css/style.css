@@ -56,6 +56,7 @@ body { background: #0a0a14; color: #eee; font-family: 'Segoe UI', system-ui, san
   justify-content: center; transition: all 0.15s;
 }
 .tb-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.15); }
+.tb-bg-btn { flex: none; width: 100%; font-size: 12px; }
 
 /* ── Status bar (bottom) ── */
 #status-bar {
