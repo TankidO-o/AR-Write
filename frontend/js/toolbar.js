@@ -21,6 +21,7 @@ export class Toolbar {
     this.onCalibrate = null;
     this.onCustomGestures = null;
     this.onBackgroundToggle = null;
+    this.onShowHints = null;
   }
 
   render(containerId) {
@@ -84,6 +85,7 @@ export class Toolbar {
       <div class="tb-card" style="margin-top:auto;">
         <div class="tb-card-label">⚡ 手势</div>
         <div class="tb-actions">
+          <button class="tb-btn" title="手势指南" id="tb-hints">?</button>
           <button class="tb-btn" title="校准手势" id="tb-calibrate">⚙</button>
           <button class="tb-btn" title="自定义手势" id="tb-custom-gestures">⚡</button>
         </div>
@@ -154,6 +156,10 @@ export class Toolbar {
     // Background toggle
     el.querySelector('#tb-bg-toggle').addEventListener('click', () => {
       if (this.onBackgroundToggle) this.onBackgroundToggle();
+    });
+    // Hint overlay
+    el.querySelector('#tb-hints').addEventListener('click', () => {
+      if (this.onShowHints) this.onShowHints();
     });
   }
 

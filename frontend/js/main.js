@@ -103,6 +103,7 @@ class App {
     this.toolbar.onCalibrate = () => this._runCalibration();
     this.toolbar.onCustomGestures = () => this.customGestures.showPanel();
     this.toolbar.onBackgroundToggle = () => this._toggleBackground();
+    this.toolbar.onShowHints = () => this._showGestureHints();
 
     this.gesture.onGestureChange = (g, prev) => {
       document.getElementById('gesture-display').textContent = g;
@@ -275,6 +276,10 @@ class App {
   }
 
   _showGestureHints() {
+    // Remove existing overlay if any
+    const existing = document.querySelector('.gh-overlay');
+    if (existing) existing.remove();
+
     const vc = document.getElementById('video-container');
     const hint = document.createElement('div');
     hint.className = 'gh-overlay';
@@ -290,14 +295,8 @@ class App {
     vc.appendChild(hint);
     hint.querySelector('.gh-dismiss').addEventListener('click', () => {
       hint.style.opacity = '0';
-      setTimeout(() => hint.remove(), 300);
+      setTimeout(() => { if (hint.parentNode) hint.remove(); }, 300);
     });
-    setTimeout(() => {
-      if (hint.parentNode) {
-        hint.style.opacity = '0';
-        setTimeout(() => hint.remove(), 300);
-      }
-    }, 8000);
   }
 
   _onFrame(data) {
