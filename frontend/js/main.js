@@ -36,28 +36,29 @@ class App {
   _setMode(mode) {
     this._mode = mode;
     const vc = document.getElementById('video-container');
-    const video = this.video.video;
-    if (!vc) return;
+    const video = document.getElementById('webcam');
+    console.log('[App] _setMode:', mode, 'video:', !!video, 'vc:', !!vc);
+
+    if (!vc || !video) return;
 
     const labels = { camera: '摄像头', blackboard: '黑板', whiteboard: '白板' };
 
     if (mode === 'camera') {
       vc.style.background = '#000';
       video.style.display = '';
-      video.style.visibility = 'visible';
+      video.style.removeProperty('visibility');
       video.style.opacity = '1';
-    } else if (mode === 'blackboard') {
-      vc.style.background = '#111';
-      video.style.display = 'none';
-      video.style.visibility = 'hidden';
     } else {
-      vc.style.background = '#fff';
+      vc.style.background = mode === 'blackboard' ? '#111' : '#fff';
       video.style.display = 'none';
       video.style.visibility = 'hidden';
     }
 
     this.toolbar.updateModeButton(mode);
     this.feedback.showActionToast('🖼️', `切换为${labels[mode]}`, '#ffaa00', 800);
+
+    // Verify it took effect
+    console.log('[App] _setMode done — video.display:', video.style.display, 'video.visibility:', video.style.visibility);
   }
 
   async start() {
@@ -186,20 +187,19 @@ class App {
     // onUndoProgress removed — undo is now a pulse, not a hold gesture
 
     this.perf.onLevelChange = (level) => {
-      const video = this.video.video;
+      const video = document.getElementById('webcam');
+      if (!video) return;
       if (level === 1) {
         if (this._mode === 'camera') video.style.opacity = '0.3';
       } else if (level === 2) {
         video.style.display = 'none';
+      } else if (this._mode === 'camera') {
+        video.style.opacity = '1';
+        video.style.display = '';
+        video.style.removeProperty('visibility');
       } else {
-        if (this._mode === 'camera') {
-          video.style.opacity = '1';
-          video.style.display = '';
-          video.style.visibility = 'visible';
-        } else {
-          video.style.display = 'none';
-          video.style.visibility = 'hidden';
-        }
+        video.style.display = 'none';
+        video.style.visibility = 'hidden';
       }
     };
 
