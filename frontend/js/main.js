@@ -182,15 +182,15 @@ class App {
     // onUndoProgress removed — undo is now a pulse, not a hold gesture
 
     this.perf.onLevelChange = (level) => {
+      const video = this.video.video;
       if (level === 1) {
-        this.video.video.style.opacity = '0.3';
+        video.style.opacity = '0.3';
       } else if (level === 2) {
-        document.getElementById('video-container').style.background = '#111';
-        this.video.video.style.display = 'none';
+        video.style.display = 'none';
       } else {
-        this.video.video.style.opacity = '1';
-        this.video.video.style.display = 'block';
-        document.getElementById('video-container').style.background = '#000';
+        video.style.opacity = '1';
+        video.style.display = (this._mode === 'camera') ? 'block' : 'none';
+        // Don't override background set by mode
       }
     };
 
