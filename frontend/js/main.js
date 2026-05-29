@@ -5,7 +5,7 @@ import { DrawLayer } from './draw-layer.js';
 import { Toolbar } from './toolbar.js';
 import { PerfMonitor } from './perf-monitor.js';
 import { Calibration } from './calibration.js';
-import { GestureFeedback } from './gesture-feedback.js';
+import { FeedbackLayer } from './feedback-layer.js';
 import { CustomGestureManager } from './custom-gestures.js';
 
 class App {
@@ -21,8 +21,17 @@ class App {
     this._lastWriteTs = 0;
     this._skelCanvas = document.getElementById('layer-skeleton');
     this._skelCtx = this._skelCanvas.getContext('2d');
-    this.feedback = new GestureFeedback();
+    this.feedback = new FeedbackLayer('video-container');
     this.customGestures = new CustomGestureManager(() => this._latestHand);
+    this._bgColor = '#000000';
+  }
+
+  setBackground(bgColor) {
+    this._bgColor = bgColor;
+    const vc = document.getElementById('video-container');
+    if (vc) {
+      vc.style.background = bgColor === 'transparent' ? 'transparent' : bgColor;
+    }
   }
 
   async start() {
@@ -80,9 +89,13 @@ class App {
     this.toolbar.render('toolbar');
     this.toolbar.onColorChange = (c) => this.draw.setColor(c);
     this.toolbar.onLineWidthChange = (w) => this.draw.setLineWidth(w);
+    this.toolbar.onEraserRadiusChange = (r) => this.draw.setEraserRadius(r);
     this.toolbar.onUndo = () => this.draw.undo();
     this.toolbar.onClear = () => this.draw.clearAll();
     this.toolbar.onSave = () => this.draw.saveScreenshot();
+    this.toolbar.onRedo = () => this.draw.redo();
+    this.toolbar.onCalibrate = () => this._runCalibration();
+    this.toolbar.onCustomGestures = () => this.customGestures.showPanel();
 
     this.gesture.onGestureChange = (g, prev) => {
       document.getElementById('gesture-display').textContent = g;
@@ -90,12 +103,17 @@ class App {
       if (prev === Gesture.WRITE && g !== Gesture.WRITE) {
         this.draw.endStroke();
       }
-      // Visual feedback for gesture activation
-      if (g !== Gesture.IDLE) {
-        const fb = { write: ['✍️', '书写', '#00ff88'], clear: ['✊', '清空', '#ff4444'],
-                     erase: ['🖐️', '擦除', '#4488ff'], switch: ['🔄', '切换', '#ffaa00'],
-                     undo: ['✌️', '撤销', '#cc66ff'] }[g];
-        if (fb) this.feedback.show(fb[0], fb[1], fb[2]);
+      // L1 feedback: gesture status card
+      if (g === Gesture.WRITE) {
+        this.feedback.showGestureStatus('🤏', '书写',
+          this.draw.color, `· ${this.draw.lineWidth}px`);
+        this.feedback.hideHoldProgress();
+      } else if (g === Gesture.ERASE) {
+        this.feedback.showGestureStatus('🖐️', '擦除',
+          '#4488ff', `· ${this.draw.eraseRadius}px`);
+      } else {
+        this.feedback.hideGestureStatus();
+        this.feedback.hideHoldProgress();
       }
     };
 
@@ -116,24 +134,24 @@ class App {
       this.draw.drawEraseCursor(c);
     };
 
-    this.gesture.onSwitchColor = () => {
+    this.gesture.onClear = () => {
       if (this._calibrating) return;
-      const colors = this.draw.colors;
-      const idx = colors.indexOf(this.draw.color);
-      const next = colors[(idx + 1) % colors.length];
-      this.draw.setColor(next);
-      this.toolbar.syncActiveColor(next);
+      this.draw.clearAll();
+      this.feedback.showActionToast('✕', '清空画布', '#ff4444', 800);
     };
-
-    this.gesture.onClear = () => { if (!this._calibrating) this.draw.clearAll(); };
-    this.gesture.onUndo = () => { if (!this._calibrating) this.draw.undo(); };
+    this.gesture.onUndo = () => {
+      if (this._calibrating) return;
+      this.draw.undo();
+      this.feedback.showActionToast('↩', '撤销', '#cc66ff', 800);
+    };
     this.gesture.onClearProgress = (p) => {
-      this._drawHoldProgress(p, '#ff4444');
-      if (p >= 1) this.draw.clearCursor();
+      if (p > 0) {
+        this.feedback.showHoldProgress(p, '🖐️', '#ff4444');
+      } else {
+        this.feedback.hideHoldProgress();
+      }
     };
-    this.gesture.onUndoProgress = (p) => {
-      this._drawHoldProgress(p, '#cc66ff');
-    };
+    // onUndoProgress removed — undo is now a pulse, not a hold gesture
 
     this.perf.onLevelChange = (level) => {
       if (level === 1) {
@@ -188,37 +206,6 @@ class App {
       console.log('[App] Loaded per-gesture thresholds:', cgThresholds);
     }
 
-    // Recalibrate button
-    const recalBtn = document.createElement('button');
-    recalBtn.className = 'tb-btn';
-    recalBtn.title = '重新校准手势';
-    recalBtn.textContent = '⚙';
-    recalBtn.addEventListener('click', () => this._runCalibration());
-    document.querySelector('#toolbar .tb-actions').appendChild(recalBtn);
-
-    // Reset calibration button
-    const resetBtn = document.createElement('button');
-    resetBtn.className = 'tb-btn';
-    resetBtn.title = '重置用户校准数据';
-    resetBtn.textContent = '↺';
-    resetBtn.style.fontSize = '18px';
-    resetBtn.addEventListener('click', () => {
-      localStorage.removeItem('ar-gesture-calibration');
-      localStorage.removeItem('ar-custom-gestures');
-      this.gesture.resetDefaults();
-      console.log('[App] Reset to defaults, starting recalibration...');
-      this._runCalibration();
-    });
-    document.querySelector('#toolbar .tb-actions').appendChild(resetBtn);
-
-    // Custom gesture button
-    const cgBtn = document.createElement('button');
-    cgBtn.className = 'tb-btn tb-btn-custom';
-    cgBtn.title = '自定义手势';
-    cgBtn.textContent = '⚡';
-    cgBtn.addEventListener('click', () => this.customGestures.showPanel());
-    document.querySelector('#toolbar .tb-actions').appendChild(cgBtn);
-
     // Wire custom gesture threshold changes
     this.customGestures.onThresholdsChanged = (thresholds) => {
       this.gesture.applyThresholds({ gestureThresholds: thresholds });
@@ -230,19 +217,42 @@ class App {
         case 'setColor':
           this.draw.setColor(action.value);
           this.toolbar.syncActiveColor(action.value);
-          this.feedback.show('⚡', name, action.value, 1000);
+          this.feedback.showActionToast('🎨', `${name}: ${action.value}`, action.value, 800);
           break;
+        case 'setBrushSize': {
+          const brushMap = { S: 2, M: 4, L: 12 };
+          const w = brushMap[action.value] || 4;
+          this.draw.setLineWidth(w);
+          this.feedback.showActionToast('🖌️', `${name}: ${action.value} (${w}px)`, '#00ff88', 800);
+          break;
+        }
+        case 'setEraserSize': {
+          const eraserMap = { S: 15, M: 30, L: 50 };
+          const r = eraserMap[action.value] || 30;
+          this.draw.setEraserRadius(r);
+          this.feedback.showActionToast('🧹', `${name}: ${action.value} (${r}px)`, '#4488ff', 800);
+          break;
+        }
         case 'undo':
           this.draw.undo();
-          this.feedback.show('⚡', `撤销 (${name})`, '#cc66ff', 800);
+          this.feedback.showActionToast('↩', `撤销 (${name})`, '#cc66ff', 800);
+          break;
+        case 'redo':
+          this.draw.redo();
+          this.feedback.showActionToast('↪', `重做 (${name})`, '#00ff88', 800);
           break;
         case 'clear':
           this.draw.clearAll();
-          this.feedback.show('⚡', `清空 (${name})`, '#ff4444', 800);
+          this.feedback.showActionToast('✕', `清空 (${name})`, '#ff4444', 800);
           break;
         case 'save':
           this.draw.saveScreenshot();
-          this.feedback.show('⚡', `截图 (${name})`, '#4488ff', 1000);
+          this.feedback.showActionToast('💾', `截图 (${name})`, '#4488ff', 1000);
+          break;
+        case 'setBackground':
+          this.setBackground(action.value);
+          const bgLabel = action.value === '#000000' ? '黑色' : action.value === '#ffffff' ? '白色' : '透明';
+          this.feedback.showActionToast('🖼️', `背景: ${bgLabel}`, '#ffaa00', 800);
           break;
       }
     };
@@ -273,9 +283,7 @@ class App {
       this.draw.endStroke();
     }
 
-    if (!this.gesture.isActive() && !this.draw.currentStroke
-        && this.gesture.state !== Gesture.CLEAR
-        && this.gesture.state !== Gesture.UNDO) {
+    if (!this.gesture.isActive() && !this.draw.currentStroke) {
       this.draw.clearCursor();
     }
   }
@@ -332,22 +340,6 @@ class App {
     }
   }
 
-  _drawHoldProgress(p, color) {
-    const c = this.draw.cursorCanvas;
-    const ctx = this.draw.cursorCtx;
-    const cx = c.width / 2, cy = c.height / 2, r = 40;
-    ctx.clearRect(0, 0, c.width, c.height);
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.stroke();
-  }
 }
 
 const app = new App();
