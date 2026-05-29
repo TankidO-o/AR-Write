@@ -3,10 +3,7 @@ import { OneEuroFilter } from './one-euro-filter.js';
 const Gesture = Object.freeze({
   IDLE:   'idle',
   WRITE:  'write',
-  CLEAR:  'clear',
   ERASE:  'erase',
-  SWITCH: 'switch',
-  UNDO:   'undo',
 });
 
 // MediaPipe hand landmark indices
@@ -70,37 +67,27 @@ export function computeGestureScores(kp, currentState) {
   const palmSize = dist2d(wrist, K(MCP.MIDDLE));
 
   const ie = extScore(wrist, K(TIP.INDEX), K(MCP.INDEX));
-  const ic = curlScore(wrist, K(TIP.INDEX), K(MCP.INDEX));
   const me = extScore(wrist, K(TIP.MIDDLE), K(MCP.MIDDLE));
-  const mc = curlScore(wrist, K(TIP.MIDDLE), K(MCP.MIDDLE));
   const re = extScore(wrist, K(TIP.RING), K(MCP.RING));
-  const rc = curlScore(wrist, K(TIP.RING), K(MCP.RING));
   const pe = extScore(wrist, K(TIP.PINKY), K(MCP.PINKY));
-  const pc = curlScore(wrist, K(TIP.PINKY), K(MCP.PINKY));
 
   const pinchClose = currentState === Gesture.WRITE
     ? pinchHystScore(K(TIP.THUMB), K(TIP.INDEX), palmSize)
     : pinchScore(K(TIP.THUMB), K(TIP.INDEX), palmSize);
-  const midPinchClose = pinchScore(K(TIP.THUMB), K(TIP.MIDDLE), palmSize);
-
-  const tw = thumbWrapScore(K(TIP.THUMB), K(MCP.INDEX), palmSize);
 
   const scores = {};
 
+  // WRITE: thumb+index pinch + other fingers curled
+  const ic = curlScore(wrist, K(TIP.INDEX), K(MCP.INDEX));
+  const mc = curlScore(wrist, K(TIP.MIDDLE), K(MCP.MIDDLE));
+  const rc = curlScore(wrist, K(TIP.RING), K(MCP.RING));
+  const pc = curlScore(wrist, K(TIP.PINKY), K(MCP.PINKY));
   scores[Gesture.WRITE] = Math.round(
     pinchClose * 55 + ie * 35 + mc * 5 + rc * 3 + pc * 2);
 
-  scores[Gesture.CLEAR] = Math.round(
-    ic * 40 + mc * 20 + rc * 15 + pc * 15 + tw * 10);
-
+  // ERASE: all fingers extended
   scores[Gesture.ERASE] = Math.round(
     ie * 25 + me * 25 + re * 25 + pe * 25);
-
-  scores[Gesture.SWITCH] = Math.round(
-    midPinchClose * 45 + ic * 30 + me * 15 + re * 10);
-
-  scores[Gesture.UNDO] = Math.round(
-    ie * 25 + me * 45 + rc * 15 + pc * 15);
 
   return scores;
 }
@@ -118,26 +105,35 @@ export class GestureStateMachine {
     debounceFrames = 3,
     idleFrames = 5,
     deadZoneMs = 300,
-    clearHoldMs = 1000,
-    undoHoldMs = 1000,
     scoreThreshold = SCORE_THRESHOLD,
   } = {}) {
     this.debounceFrames = debounceFrames;
     this.idleFrames = idleFrames;
     this.deadZoneMs = deadZoneMs;
-    this.clearHoldMs = clearHoldMs;
-    this.undoHoldMs = undoHoldMs;
     this.scoreThreshold = scoreThreshold;
+
+    // Erase-hold-to-clear: hold erase gesture still for 1500 ms
+    this.clearHoldMs = 1500;
+    // Undo: quick pinch-open pulse (< 300 ms, no stroke drawn)
+    this.undoPulseMaxMs = 300;
+    this.undoDeadZoneMs = 500;
+    // Stability: how far the palm can drift while waiting for clear (normalized coords)
+    this.eraseStableThreshold = 0.03;
 
     this.state = Gesture.IDLE;
     this.prevState = Gesture.IDLE;
     this.debounceCounter = 0;
     this.idleCounter = 0;
     this.lastSwitchTime = 0;
-    this.clearStartTime = null;
-    this.undoStartTime = null;
     this.pendingGesture = null;
     this.pendingCounter = 0;
+
+    this._eraseStableAnchor = null;
+    this._eraseStableDuration = 0;
+    this._eraseStableLastTs = 0;
+    this._writeStartTime = null;
+    this._writeStartedStroke = false;
+    this._lastUndoTime = 0;
 
     this.pinchFilterX = new OneEuroFilter();
     this.pinchFilterY = new OneEuroFilter();
@@ -153,11 +149,9 @@ export class GestureStateMachine {
     this.onGestureChange = null;
     this.onWritePoint = null;
     this.onEraseAt = null;
-    this.onSwitchColor = null;
     this.onClear = null;
     this.onUndo = null;
     this.onClearProgress = null;
-    this.onUndoProgress = null;
   }
 
   // ── Threshold management ──
@@ -173,7 +167,7 @@ export class GestureStateMachine {
   }
 
   resetDefaults() {
-    this.scoreThreshold = SCORE_THRESHOLD;
+    this.scoreThreshold = 60;
     this._gestureThresholds = { ...DEFAULT_GESTURE_THRESHOLDS };
   }
 
@@ -254,17 +248,6 @@ export class GestureStateMachine {
     this.debounceCounter = 0;
     this.lastSwitchTime = now;
 
-    if (this.state === Gesture.CLEAR) {
-      this.clearStartTime = now;
-    } else {
-      this.clearStartTime = null;
-    }
-    if (this.state === Gesture.UNDO) {
-      this.undoStartTime = now;
-    } else {
-      this.undoStartTime = null;
-    }
-
     if (this.state !== Gesture.WRITE) {
       this.pinchFilterX.reset();
       this.pinchFilterY.reset();
@@ -274,8 +257,36 @@ export class GestureStateMachine {
       this.eraseFilterY.reset();
     }
 
+    // Reset erase stability tracking when leaving ERASE
+    if (newState !== Gesture.ERASE) {
+      this._eraseStableAnchor = null;
+      this._eraseStableDuration = 0;
+      this._eraseStableLastTs = 0;
+    }
+
     if (this.onGestureChange) {
       this.onGestureChange(this.state, this.prevState);
+    }
+
+    // Check for undo pulse: quick pinch-open without drawing
+    if (this.prevState === Gesture.WRITE && newState === Gesture.IDLE) {
+      const pulseDuration = now - this._writeStartTime;
+      if (this._writeStartTime !== null &&
+          pulseDuration < this.undoPulseMaxMs &&
+          !this._writeStartedStroke &&
+          now - this._lastUndoTime > this.undoDeadZoneMs) {
+        this._lastUndoTime = now;
+        if (this.onUndo) this.onUndo();
+      }
+    }
+    // Reset write tracking
+    if (newState !== Gesture.WRITE) {
+      this._writeStartTime = null;
+      this._writeStartedStroke = false;
+    }
+    if (newState === Gesture.WRITE) {
+      this._writeStartTime = now;
+      this._writeStartedStroke = false;
     }
   }
 
@@ -286,42 +297,46 @@ export class GestureStateMachine {
         const midY = (kp[TIP.THUMB].y + kp[TIP.INDEX].y) / 2;
         const sx = this.pinchFilterX.filter(midX, ts / 1000);
         const sy = this.pinchFilterY.filter(midY, ts / 1000);
-        if (this.onWritePoint) this.onWritePoint({ x: sx, y: sy });
+        if (this.onWritePoint) {
+          this.onWritePoint({ x: sx, y: sy });
+          this._writeStartedStroke = true;
+        }
         break;
       }
       case Gesture.ERASE: {
         const ex = this.eraseFilterX.filter(pc.x, ts / 1000);
         const ey = this.eraseFilterY.filter(pc.y, ts / 1000);
         if (this.onEraseAt) this.onEraseAt({ x: ex, y: ey });
-        break;
-      }
-      case Gesture.SWITCH: {
-        if (this.onSwitchColor) this.onSwitchColor();
-        this._transition(Gesture.IDLE);
-        break;
-      }
-      case Gesture.CLEAR: {
-        if (this.clearStartTime !== null) {
-          const elapsed = Date.now() - this.clearStartTime;
-          const progress = Math.min(elapsed / this.clearHoldMs, 1);
+
+        // Stability detection: hold still for clearHoldMs to trigger clear
+        const now = Date.now();
+        if (this._eraseStableAnchor === null) {
+          this._eraseStableAnchor = { x: pc.x, y: pc.y };
+          this._eraseStableDuration = 0;
+          this._eraseStableLastTs = now;
+        }
+        const dx = pc.x - this._eraseStableAnchor.x;
+        const dy = pc.y - this._eraseStableAnchor.y;
+        const moved = Math.hypot(dx, dy);
+
+        if (moved < this.eraseStableThreshold) {
+          if (this._eraseStableLastTs > 0) {
+            this._eraseStableDuration += (now - this._eraseStableLastTs);
+          }
+          const progress = Math.min(this._eraseStableDuration / this.clearHoldMs, 1);
           if (this.onClearProgress) this.onClearProgress(progress);
           if (progress >= 1) {
             if (this.onClear) this.onClear();
+            this._eraseStableAnchor = null;
+            this._eraseStableDuration = 0;
             this._transition(Gesture.IDLE);
           }
+        } else {
+          this._eraseStableAnchor = { x: pc.x, y: pc.y };
+          this._eraseStableDuration = 0;
+          if (this.onClearProgress) this.onClearProgress(0);
         }
-        break;
-      }
-      case Gesture.UNDO: {
-        if (this.undoStartTime !== null) {
-          const elapsed = Date.now() - this.undoStartTime;
-          const progress = Math.min(elapsed / this.undoHoldMs, 1);
-          if (this.onUndoProgress) this.onUndoProgress(progress);
-          if (progress >= 1) {
-            if (this.onUndo) this.onUndo();
-            this._transition(Gesture.IDLE);
-          }
-        }
+        this._eraseStableLastTs = now;
         break;
       }
     }
