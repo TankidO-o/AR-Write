@@ -1,6 +1,5 @@
 const GESTURE_META = {
   write:  { label: '拇指食指捏合', icon: '✍️', desc: '拇指与食指尖捏在一起，其余三指自然蜷曲' },
-  switch: { label: '拇指中指捏合', icon: '🔄', desc: '拇指与中指尖捏在一起，食指伸直，其余蜷曲' },
   clear:  { label: '握拳',         icon: '✊', desc: '四指紧握，拇指包在手指外侧' },
   erase:  { label: '五指张开',     icon: '🖐️', desc: '五指完全伸直展开' },
   undo:   { label: '比耶手势',     icon: '✌️', desc: '食指和中指伸直，无名指小指蜷曲' },
@@ -151,7 +150,7 @@ function drawSkeleton(ctx, kp, w, h, extendedAngle, curledAngle) {
 export class Calibration {
   constructor(getHandData) {
     this._getHand = getHandData;
-    this._gestureOrder = ['write', 'switch', 'clear', 'erase', 'undo'];
+    this._gestureOrder = ['write', 'clear', 'erase', 'undo'];
     this._currentIdx = 0;
     this._sampleCount = 0;
     this._samples = {};
@@ -284,15 +283,10 @@ export class Calibration {
     const emMin = Math.min(...eraseMinAngles);
     t.extendedAngle = Math.max(Math.round(emMin * 0.88), 110);
 
-    const switchPinch = this._samples.switch.map(f => f.midPinchDist);
-    const swMax = Math.max(...switchPinch);
-    t.switchPinchThreshold = Math.min(swMax * 1.25, 0.22);
-
     console.log('[Calibration] pure-union thresholds:', JSON.stringify(t),
       '\n  write max pinch:', wpMax.toFixed(3),
       '| clear max angle:', Math.round(cmMax),
-      '| erase min angle:', Math.round(emMin),
-      '| sw max pinch:', swMax.toFixed(3));
+      '| erase min angle:', Math.round(emMin));
     return t;
   }
 
