@@ -36,20 +36,24 @@ class App {
   _setMode(mode) {
     this._mode = mode;
     const vc = document.getElementById('video-container');
-    const video = document.getElementById('webcam');
+    const video = this.video.video;
     if (!vc) return;
 
     const labels = { camera: '摄像头', blackboard: '黑板', whiteboard: '白板' };
 
     if (mode === 'camera') {
       vc.style.background = '#000';
-      if (video) video.style.display = 'block';
+      video.style.display = '';
+      video.style.visibility = 'visible';
+      video.style.opacity = '1';
     } else if (mode === 'blackboard') {
       vc.style.background = '#111';
-      if (video) video.style.display = 'none';
+      video.style.display = 'none';
+      video.style.visibility = 'hidden';
     } else {
       vc.style.background = '#fff';
-      if (video) video.style.display = 'none';
+      video.style.display = 'none';
+      video.style.visibility = 'hidden';
     }
 
     this.toolbar.updateModeButton(mode);
@@ -184,13 +188,18 @@ class App {
     this.perf.onLevelChange = (level) => {
       const video = this.video.video;
       if (level === 1) {
-        video.style.opacity = '0.3';
+        if (this._mode === 'camera') video.style.opacity = '0.3';
       } else if (level === 2) {
         video.style.display = 'none';
       } else {
-        video.style.opacity = '1';
-        video.style.display = (this._mode === 'camera') ? 'block' : 'none';
-        // Don't override background set by mode
+        if (this._mode === 'camera') {
+          video.style.opacity = '1';
+          video.style.display = '';
+          video.style.visibility = 'visible';
+        } else {
+          video.style.display = 'none';
+          video.style.visibility = 'hidden';
+        }
       }
     };
 
