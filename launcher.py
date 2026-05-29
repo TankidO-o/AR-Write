@@ -1,8 +1,8 @@
 """
-AR Gesture Writing — Smart Launcher.
+AR Gesture Writing -- Smart Launcher.
 
 Handles environment detection, dependency checks, and platform
-differences automatically.  Double‑click or run from terminal.
+differences automatically.  Double-click or run from terminal.
 
 Usage:
     python launcher.py                 # default: 127.0.0.1:8765
@@ -28,7 +28,7 @@ def _check_python_version():
         print("Download: https://www.python.org/downloads/")
         sys.exit(1)
     if (major, minor) == (3, 14):
-        print("NOTE: Python 3.14 detected — will use the ONNX Runtime backend.")
+        print("NOTE: Python 3.14 detected -- will use the ONNX Runtime backend.")
         print("      Make sure you ran `python convert_models.py` first.")
         print()
 
@@ -58,11 +58,11 @@ def _check_critical_deps():
 
 
 def _check_backend():
-    """Ensure at least one hand‑detection backend is available."""
+    """Ensure at least one hand-detection backend is available."""
     # Try mediapipe
     try:
         __import__("mediapipe")
-        return  # mediapipe available — good
+        return  # mediapipe available -- good
     except ImportError:
         pass
 
@@ -74,14 +74,14 @@ def _check_backend():
         det = os.path.join(models_dir, "hand_detector.onnx")
         ldm = os.path.join(models_dir, "hand_landmarks_detector.onnx")
         if os.path.isfile(det) and os.path.isfile(ldm):
-            return  # ONNX models exist — good
+            return  # ONNX models exist -- good
 
-        print("ERROR: No hand‑detection backend available.")
+        print("ERROR: No hand-detection backend available.")
         print()
-        print("Option A (recommended) — Install mediapipe:")
+        print("Option A (recommended) -- Install mediapipe:")
         print("  pip install mediapipe>=0.10.14")
         print()
-        print("Option B — Use ONNX Runtime (works on Python 3.14+):")
+        print("Option B -- Use ONNX Runtime (works on Python 3.14+):")
         print("  pip install onnxruntime")
         print("  cd backend")
         print("  python convert_models.py")
@@ -90,7 +90,7 @@ def _check_backend():
     except ImportError:
         pass
 
-    print("ERROR: No hand‑detection backend available.")
+    print("ERROR: No hand-detection backend available.")
     print()
     print("Install one of:")
     print("  pip install mediapipe>=0.10.14         (Python <= 3.12)")
@@ -103,7 +103,7 @@ def _check_backend():
 # ---------------------------------------------------------------------------
 
 def main():
-    print("AR Gesture Writing — Launcher")
+    print("AR Gesture Writing -- Launcher")
     print("-" * 32)
 
     _check_python_version()

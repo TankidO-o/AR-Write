@@ -1,19 +1,24 @@
 """
-AR Gesture Writing System — unified backend + frontend server.
+AR Gesture Writing System -- unified backend + frontend server.
 
 Serves:
-  - WebSocket hand‑tracking stream   ws://host:port/ws
-  - REST API                         http://host:port/health, /frame
+  - WebSocket hand-tracking stream   ws://host:port/ws
+  - REST API                         http://host:port/health, /frame, /shutdown
   - Frontend SPA                     http://host:port/
 
 Usage:
-    python server.py                 # default: 127.0.0.1:8765
-    python server.py --host 0.0.0.0 --port 80
+    python server.py                       # default: 127.0.0.1:8765
+    python server.py --host 0.0.0.0        # allow LAN access
+    python server.py --port 8080           # custom port
+    python server.py --shutdown-timeout 5  # quit 5s after last client disconnects
+    python server.py --no-browser          # don't open browser
+    python server.py --no-shutdown         # never auto-shutdown
 """
 
 import argparse
 import asyncio
 import json
+import logging
 import os
 import sys
 import threading
@@ -29,6 +34,10 @@ from fastapi.staticfiles import StaticFiles
 
 from camera import Camera
 from hand_detector import HandDetector
+
+# Keep logging quiet -- only show errors from noisy libraries
+logging.getLogger("uvicorn").setLevel(logging.WARNING)
+logging.getLogger("onnxruntime").setLevel(logging.ERROR)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -53,13 +62,26 @@ detector = HandDetector()
 _latest_jpeg: bytes | None = None
 _jpeg_lock = threading.Lock()
 
+# Auto-shutdown tracking
+_connected_clients: set[WebSocket] = set()
+_shutdown_event: asyncio.Event | None = None
+_shutdown_timeout: float = 10.0
+_enable_auto_shutdown: bool = True
+
 
 # ---------------------------------------------------------------------------
-# WebSocket — hand tracking stream
+# WebSocket -- hand tracking stream
 # ---------------------------------------------------------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
+    _connected_clients.add(ws)
+
+    # Cancel any pending shutdown when a client connects
+    global _shutdown_event
+    if _shutdown_event:
+        _shutdown_event.set()
+
     running = True
     last_frame_time = time.time()
     frame_count = 0
@@ -136,10 +158,32 @@ async def websocket_endpoint(ws: WebSocket):
             await recv_task
         except asyncio.CancelledError:
             pass
+        _connected_clients.discard(ws)
         try:
             await ws.close()
         except Exception:
             pass
+
+        # Start auto-shutdown countdown when last client leaves
+        if _enable_auto_shutdown and not _connected_clients:
+            asyncio.create_task(_auto_shutdown())
+
+
+async def _auto_shutdown():
+    """Wait a grace period, then stop the server if no client reconnected."""
+    global _shutdown_event
+    _shutdown_event = asyncio.Event()
+
+    try:
+        await asyncio.wait_for(_shutdown_event.wait(), timeout=_shutdown_timeout)
+        # Client reconnected -- cancel shutdown
+        _shutdown_event = None
+    except asyncio.TimeoutError:
+        # No client reconnected -- shut down
+        print("\nAll clients disconnected. Shutting down ...")
+        # Give uvicorn a moment to finish pending writes, then stop
+        await asyncio.sleep(0.5)
+        os._exit(0)
 
 
 # ---------------------------------------------------------------------------
@@ -158,12 +202,19 @@ async def get_frame():
         return Response(content=_latest_jpeg, media_type="image/jpeg")
 
 
+@app.post("/shutdown")
+async def shutdown():
+    """Explicit shutdown endpoint -- called by frontend on tab close."""
+    print("Shutdown requested via API.")
+    threading.Thread(target=lambda: time.sleep(0.5) or os._exit(0), daemon=True).start()
+    return {"status": "shutting down"}
+
+
 # ---------------------------------------------------------------------------
 # Frontend SPA
 # ---------------------------------------------------------------------------
 @app.get("/")
 async def index():
-    """Serve the SPA entry point."""
     index_path = os.path.join(_FRONTEND_DIR, "index.html")
     if os.path.isfile(index_path):
         return HTMLResponse(open(index_path, encoding="utf-8").read())
@@ -174,7 +225,6 @@ async def index():
 # Startup
 # ---------------------------------------------------------------------------
 def _open_browser(url: str, delay: float = 1.5):
-    """Open the browser after a short delay (non‑blocking)."""
     time.sleep(delay)
     try:
         webbrowser.open(url)
@@ -183,17 +233,32 @@ def _open_browser(url: str, delay: float = 1.5):
 
 
 def main():
+    global _shutdown_timeout, _enable_auto_shutdown
+
     parser = argparse.ArgumentParser(description="AR Gesture Writing Server")
     parser.add_argument("--host", default="127.0.0.1", help="Listen address")
     parser.add_argument("--port", type=int, default=8765, help="Listen port")
     parser.add_argument("--no-browser", action="store_true", help="Don't open browser")
+    parser.add_argument(
+        "--shutdown-timeout",
+        type=float,
+        default=10.0,
+        help="Seconds to wait after last client disconnects (default: 10)",
+    )
+    parser.add_argument(
+        "--no-shutdown",
+        action="store_true",
+        help="Never auto-shutdown (keep running after browser closes)",
+    )
     args = parser.parse_args()
 
-    # Mount frontend static assets (CSS, JS, icons)
+    _shutdown_timeout = args.shutdown_timeout
+    _enable_auto_shutdown = not args.no_shutdown
+
+    # Mount frontend static assets
     if os.path.isdir(_FRONTEND_DIR):
         app.mount("/css", StaticFiles(directory=os.path.join(_FRONTEND_DIR, "css")), name="css")
         app.mount("/js", StaticFiles(directory=os.path.join(_FRONTEND_DIR, "js")), name="js")
-        # Serve icon files individually
         for fname in ("icon.png", "icon.svg", "icon-512.png"):
             fpath = os.path.join(_FRONTEND_DIR, fname)
             if os.path.isfile(fpath):
@@ -207,21 +272,20 @@ def main():
     if args.host == "0.0.0.0":
         url = f"http://127.0.0.1:{args.port}"
 
-    print("=" * 54)
+    print("=" * 50)
     print("  AR Gesture Writing System")
-    print("=" * 54)
-    print(f"  Server:   {url}")
-    print(f"  WebSocket: ws://127.0.0.1:{args.port}/ws")
-    print(f"  Frontend: embedded (no separate HTTP server)")
-    print(f"  Backend:  {'MediaPipe' if 'MediaPipe' in type(detector).__name__ else 'ONNX Runtime'}")
-    print("=" * 54)
+    print("=" * 50)
+    print(f"  Address:    {url}")
+    print(f"  Backend:    {'MediaPipe' if 'MediaPipe' in type(detector).__name__ else 'ONNX Runtime'}")
+    if _enable_auto_shutdown:
+        print(f"  Auto-quit:  {_shutdown_timeout}s after browser closes")
+    print("=" * 50)
 
     if not args.no_browser:
         threading.Thread(target=_open_browser, args=(url,), daemon=True).start()
 
     try:
         camera.start()
-        print("Camera started.")
         uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     finally:
         camera.stop()

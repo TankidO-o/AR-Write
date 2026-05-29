@@ -1,6 +1,6 @@
 # AR Gesture Writing System
 
-> An AR gesture-based writing and drawing system powered by computer vision. Use hand gestures in mid-air to write, erase, undo, and clear the canvas — no touch, no stylus, just your webcam.
+> An AR gesture-based writing and drawing system powered by computer vision. Use hand gestures in mid-air to write, erase, undo, and clear the canvas -- no touch, no stylus, just your webcam.
 
 ## Quick Start
 
@@ -20,23 +20,23 @@ conda activate ar-gesture
 cd backend
 pip install -r requirements.txt
 
-# (ONNX backend only — first time setup) Convert the hand detection model
+# (ONNX backend only -- first time setup) Convert the hand detection model
 python convert_models.py
 ```
 
-> **Python 3.14 users**: mediapipe does not have 3.14 wheels yet. The system auto‑falls back to the ONNX Runtime backend. Install `onnxruntime onnx opencv-python fastapi uvicorn`, then run `python convert_models.py` once to generate the ONNX models.
+> **Python 3.14 users**: mediapipe does not have 3.14 wheels yet. The system auto-falls back to the ONNX Runtime backend. Install `onnxruntime onnx opencv-python fastapi uvicorn`, then run `python convert_models.py` once to generate the ONNX models.
 
 **Launch**:
 
 | Platform | Method |
 |----------|--------|
-| **Windows** | Double‑click `launcher.py`, or `python launcher.py` in terminal |
+| **Windows** | Double-click `launcher.py`, or `python launcher.py` in terminal |
 | **macOS / Linux** | `python launcher.py` in terminal |
 | **Manual** | `cd backend && python server.py` |
 
 The browser opens automatically at `http://localhost:8765`. A gesture guide overlay appears on first launch (click `?` to re-open anytime).
 
-> `launcher.py` auto‑detects your Python version, missing dependencies, and hand‑detection backend availability, giving clear guidance in English. The frontend is embedded in the backend — no separate HTTP server required.
+> `launcher.py` auto-detects your Python version, missing dependencies, and hand-detection backend availability, giving clear guidance in English. The frontend is embedded in the backend -- no separate HTTP server required.
 
 ## Gestures
 
@@ -56,8 +56,8 @@ Left sidebar with 5 card sections:
 | 🎨 Colors | 6 preset swatches + color picker |
 | 🖌️ Brush | S/M/L presets + fine slider (2~20px) |
 | 🧹 Eraser | Small/Medium/Large presets (15/30/50px) |
-| 📋 Canvas | ↩ Undo · ↪ Redo · ✕ Clear · 💾 Save |
-| ⚡ Gestures | ? Guide · ⚙ Calibrate · ⚡ Custom Gestures |
+| 📋 Canvas | ↩ Undo - ↪ Redo - ✕ Clear - 💾 Save |
+| ⚡ Gestures | ? Guide - ⚙ Calibrate - ⚡ Custom Gestures |
 
 Click 🖼️ to cycle through **Camera / Blackboard / Whiteboard** modes. The camera feed is hidden in blackboard and whiteboard modes.
 
@@ -66,8 +66,8 @@ Click 🖼️ to cycle through **Camera / Blackboard / Whiteboard** modes. The c
 Click the ⚡ button in the toolbar to open the custom gesture panel:
 
 - **Overwrite** existing built-in gestures with your own calibration data (10 samples each)
-- **Create** custom gestures with template matching (3 samples each) — bind to any of 8 action types
-- Adjust per-gesture **thresholds** (40–95) and save to localStorage
+- **Create** custom gestures with template matching (3 samples each) -- bind to any of 8 action types
+- Adjust per-gesture **thresholds** (40-95) and save to localStorage
 
 Available actions:
 
@@ -106,4 +106,4 @@ docs/        Design documents and implementation plans
 **Backend**: Python, OpenCV, MediaPipe Hands / ONNX Runtime, FastAPI, WebSocket
 **Frontend**: HTML5 Canvas 2D, WebSocket API, ES Modules
 
-> The hand detection backend auto‑switches between mediapipe (Python ≤3.12, faster) and ONNX Runtime (any Python version including 3.14+). See `backend/onnx_hand_detector.py`.
+> The hand detection backend auto-switches between mediapipe (Python ≤3.12, faster) and ONNX Runtime (any Python version including 3.14+). See `backend/onnx_hand_detector.py`.

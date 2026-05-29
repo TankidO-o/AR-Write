@@ -24,9 +24,17 @@ import numpy as np
 
 try:
     import onnxruntime as ort
+
+    # Silence ONNX Runtime shape‑merge and non‑critical warnings
+    _ORT_SO = ort.SessionOptions()
+    _ORT_SO.log_severity_level = 3  # ERROR only
     _ORT_AVAILABLE = True
 except ImportError:
     _ORT_AVAILABLE = False
+
+# Also suppress at module level (before first InferenceSession call)
+os.environ.setdefault("ORT_DISABLE_EXTENSIONS", "0")
+os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")
 
 
 # ---------------------------------------------------------------------------
@@ -336,10 +344,10 @@ class ONNXHandDetector:
             )
 
         self._det_sess = ort.InferenceSession(
-            det_path, providers=["CPUExecutionProvider"]
+            det_path, _ORT_SO, providers=["CPUExecutionProvider"]
         )
         self._ldm_sess = ort.InferenceSession(
-            ldm_path, providers=["CPUExecutionProvider"]
+            ldm_path, _ORT_SO, providers=["CPUExecutionProvider"]
         )
 
         self._anchors = _build_anchors()

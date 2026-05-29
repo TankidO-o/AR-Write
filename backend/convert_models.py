@@ -31,6 +31,10 @@ _TASK_URL = (
 
 def _apply_patches():
     """Monkey-patch tflite2onnx so it can convert our float16 models."""
+    # Suppress float16 / empty-tensor warnings
+    import logging
+    logging.getLogger("tflite2onnx").setLevel(logging.ERROR)
+
     import tflite2onnx.layout
     import tflite2onnx.tensor
     import tflite2onnx.op.activation
