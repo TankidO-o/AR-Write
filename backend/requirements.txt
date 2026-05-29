@@ -1,4 +1,14 @@
 opencv-python>=4.10.0
-mediapipe==0.10.14
+onnxruntime>=1.18.0
+onnx>=1.16.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
+
+# The following packages are needed ONLY for one‑time TFLite→ONNX conversion.
+# After the ONNX models are generated in .models/ they can be removed.
+tflite>=2.18.0
+tflite2onnx>=0.4.0
+
+# Optional but recommended: the original mediapipe backend is faster.
+# Install manually if your Python version has mediapipe wheels (≤3.12):
+#   pip install mediapipe>=0.10.14

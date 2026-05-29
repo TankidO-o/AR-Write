@@ -1,15 +1,28 @@
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
+"""
+Hand detection with automatic backend selection.
+
+Backends (tried in order):
+  1. mediapipe (original) – fastest, requires mediapipe wheel
+  2. ONNX Runtime          – pure onnxruntime, works on Python 3.14+
+
+The public class ``HandDetector`` is a thin wrapper that delegates to the
+best available backend.  server.py continues to work unchanged.
+"""
+
 import os
 import urllib.request
+from typing import Optional
 
+# ---------------------------------------------------------------------------
+# Model download (shared)
+# ---------------------------------------------------------------------------
 _HAND_LANDMARKER_MODEL_URL = (
     "https://storage.googleapis.com/mediapipe-models/"
     "hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
 )
 
-def _download_default_model():
+
+def _download_default_model() -> str:
     cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".models")
     os.makedirs(cache_dir, exist_ok=True)
     model_path = os.path.join(cache_dir, "hand_landmarker.task")
@@ -18,10 +31,47 @@ def _download_default_model():
         urllib.request.urlretrieve(_HAND_LANDMARKER_MODEL_URL, model_path)
     return model_path
 
-class HandDetector:
-    def __init__(self, model_path=None, min_detection_confidence=0.5, min_tracking_confidence=0.5):
+
+# ---------------------------------------------------------------------------
+# Backend probe
+# ---------------------------------------------------------------------------
+
+def _mediapipe_available() -> bool:
+    try:
+        import mediapipe  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _onnx_available() -> bool:
+    try:
+        import onnxruntime  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# MediaPipe backend (original)
+# ---------------------------------------------------------------------------
+
+class _MediaPipeHandDetector:
+    """Original mediapipe‑based hand detector."""
+
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        min_detection_confidence: float = 0.5,
+        min_tracking_confidence: float = 0.5,
+    ):
+        import mediapipe as mp
+        from mediapipe.tasks import python
+        from mediapipe.tasks.python import vision
+
         if model_path is None:
             model_path = _download_default_model()
+
         base_options = python.BaseOptions(model_asset_path=model_path)
         options = vision.HandLandmarkerOptions(
             base_options=base_options,
@@ -31,9 +81,11 @@ class HandDetector:
             min_tracking_confidence=min_tracking_confidence,
         )
         self._detector = vision.HandLandmarker.create_from_options(options)
-        self._locked_handedness = None
+        self._locked_handedness: Optional[str] = None
 
-    def detect(self, rgb_frame, timestamp_ms=0):
+    def detect(self, rgb_frame, timestamp_ms: int = 0) -> Optional[dict]:
+        import mediapipe as mp
+
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         result = self._detector.detect_for_video(mp_image, timestamp_ms)
 
@@ -48,7 +100,9 @@ class HandDetector:
         landmarks = result.hand_landmarks[hand_index]
         keypoints = []
         for i, lm in enumerate(landmarks):
-            keypoints.append({"id": i, "x": round(lm.x, 4), "y": round(lm.y, 4), "z": round(lm.z, 4)})
+            keypoints.append(
+                {"id": i, "x": round(lm.x, 4), "y": round(lm.y, 4), "z": round(lm.z, 4)}
+            )
 
         wrist = landmarks[0]
         middle_mcp = landmarks[9]
@@ -74,3 +128,22 @@ class HandDetector:
 
     def close(self):
         self._detector.close()
+
+
+# ---------------------------------------------------------------------------
+# Public HandDetector  (facade)
+# ---------------------------------------------------------------------------
+
+# Resolve the best backend at import time
+_BACKEND: type
+
+if _mediapipe_available():
+    HandDetector = _MediaPipeHandDetector
+elif _onnx_available():
+    from onnx_hand_detector import ONNXHandDetector
+    HandDetector = ONNXHandDetector  # type: ignore[assignment]
+else:
+    raise RuntimeError(
+        "No hand detection backend available.\n"
+        "Install one of:  mediapipe  |  onnxruntime"
+    )
