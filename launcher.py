@@ -4,8 +4,13 @@ AR Gesture Writing -- Smart Launcher.
 Handles environment detection, dependency checks, and platform
 differences automatically.  Double-click or run from terminal.
 
+Works in two modes:
+  - Development:   python launcher.py
+  - Packaged .exe: built with PyInstaller (self-contained, no Python needed)
+
 Usage:
     python launcher.py                 # default: 127.0.0.1:8765
+    AR-Write.exe                       # self-contained executable
     python launcher.py --host 0.0.0.0  # allow LAN access
     python launcher.py --port 8080     # custom port
     python launcher.py --no-browser    # don't open browser
@@ -17,11 +22,29 @@ import sys
 
 
 # ---------------------------------------------------------------------------
-# Environment checks
+# PyInstaller support -- when bundled, files are extracted to sys._MEIPASS
+# ---------------------------------------------------------------------------
+def _get_root() -> str:
+    """Return the project root directory (works in dev and PyInstaller modes)."""
+    if getattr(sys, "frozen", False):
+        # Running inside a PyInstaller bundle
+        return sys._MEIPASS  # type: ignore[attr-defined]
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _get_backend_dir() -> str:
+    return os.path.join(_get_root(), "backend")
+
+
+def _get_server_py() -> str:
+    return os.path.join(_get_backend_dir(), "server.py")
+
+
+# ---------------------------------------------------------------------------
+# Environment checks (skipped in PyInstaller mode -- all deps are bundled)
 # ---------------------------------------------------------------------------
 
 def _check_python_version():
-    """Warn if the Python version is unsupported or has known issues."""
     major, minor = sys.version_info[:2]
     if (major, minor) < (3, 10):
         print("ERROR: Python 3.10+ required (you have %d.%d)." % (major, minor))
@@ -34,7 +57,6 @@ def _check_python_version():
 
 
 def _check_critical_deps():
-    """Verify the minimum required packages are installed."""
     missing = []
     for pkg, import_name in [
         ("opencv-python", "cv2"),
@@ -58,23 +80,22 @@ def _check_critical_deps():
 
 
 def _check_backend():
-    """Ensure at least one hand-detection backend is available."""
     # Try mediapipe
     try:
         __import__("mediapipe")
-        return  # mediapipe available -- good
+        return
     except ImportError:
         pass
 
     # Try onnxruntime + ONNX models
     try:
         import onnxruntime  # noqa: F401
-        backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
+        backend_dir = _get_backend_dir()
         models_dir = os.path.join(backend_dir, ".models")
         det = os.path.join(models_dir, "hand_detector.onnx")
         ldm = os.path.join(models_dir, "hand_landmarks_detector.onnx")
         if os.path.isfile(det) and os.path.isfile(ldm):
-            return  # ONNX models exist -- good
+            return
 
         print("ERROR: No hand-detection backend available.")
         print()
@@ -103,16 +124,20 @@ def _check_backend():
 # ---------------------------------------------------------------------------
 
 def main():
-    print("AR Gesture Writing -- Launcher")
+    is_frozen = getattr(sys, "frozen", False)
+
+    if is_frozen:
+        print("AR Gesture Writing (self-contained)")
+    else:
+        print("AR Gesture Writing -- Launcher")
     print("-" * 32)
 
-    _check_python_version()
-    _check_critical_deps()
-    _check_backend()
+    if not is_frozen:
+        _check_python_version()
+        _check_critical_deps()
+        _check_backend()
 
-    backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
-    server_py = os.path.join(backend_dir, "server.py")
-
+    server_py = _get_server_py()
     if not os.path.isfile(server_py):
         print(f"ERROR: {server_py} not found.")
         print("Make sure the 'backend/' directory is present.")
@@ -120,7 +145,7 @@ def main():
 
     # Forward all arguments to server.py
     args = [sys.executable, server_py] + sys.argv[1:]
-    subprocess.run(args, cwd=backend_dir)
+    subprocess.run(args, cwd=_get_backend_dir())
 
 
 if __name__ == "__main__":

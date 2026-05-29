@@ -38,9 +38,15 @@ os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")
 
 
 # ---------------------------------------------------------------------------
-# Paths
+# Paths (PyInstaller-aware — uses sys._MEIPASS when bundled)
 # ---------------------------------------------------------------------------
-_MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".models")
+import sys as _sys
+
+if getattr(_sys, "frozen", False):
+    _MODEL_DIR = os.path.join(_sys._MEIPASS, "backend", ".models")  # type: ignore[attr-defined]
+else:
+    _MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".models")
+
 _HAND_DETECTOR_ONNX = os.path.join(_MODEL_DIR, "hand_detector.onnx")
 _HAND_LANDMARKS_ONNX = os.path.join(_MODEL_DIR, "hand_landmarks_detector.onnx")
 

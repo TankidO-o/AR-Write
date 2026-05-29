@@ -40,10 +40,16 @@ logging.getLogger("uvicorn").setLevel(logging.WARNING)
 logging.getLogger("onnxruntime").setLevel(logging.ERROR)
 
 # ---------------------------------------------------------------------------
-# Paths
+# Paths (PyInstaller-aware — uses sys._MEIPASS when bundled)
 # ---------------------------------------------------------------------------
-_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-_FRONTEND_DIR = os.path.join(os.path.dirname(_BACKEND_DIR), "frontend")
+if getattr(sys, "frozen", False):
+    # Running inside a PyInstaller bundle
+    _ROOT_DIR = sys._MEIPASS  # type: ignore[attr-defined]
+else:
+    _ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+_BACKEND_DIR = os.path.join(_ROOT_DIR, "backend")
+_FRONTEND_DIR = os.path.join(_ROOT_DIR, "frontend")
 
 # ---------------------------------------------------------------------------
 # App

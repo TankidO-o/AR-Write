@@ -38,6 +38,17 @@ python convert_models.py
 
 > `launcher.py` 会自动检测 Python 版本、依赖包、hand detection 后端是否就绪，并给出明确的中文提示。前端已嵌入后端，不再需要单独的 `python -m http.server`。
 
+### 打包为 EXE（无需安装 Python）
+
+```bash
+pip install pyinstaller
+python build_exe.py
+```
+
+生成 `dist/AR-Write.exe`（~150 MB，自包含 Python + ONNX + OpenCV + 前端）。
+
+> 打包时自动合并 ONNX 模型，用户双击 `AR-Write.exe` 即可启动——零依赖、无控制台窗口、浏览器自动打开。适合分发给非技术用户。
+
 ## 手势操作
 
 | 手势 | 操作 | 说明 |

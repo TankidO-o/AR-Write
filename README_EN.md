@@ -38,6 +38,17 @@ The browser opens automatically at `http://localhost:8765`. A gesture guide over
 
 > `launcher.py` auto-detects your Python version, missing dependencies, and hand-detection backend availability, giving clear guidance in English. The frontend is embedded in the backend -- no separate HTTP server required.
 
+### Build Standalone EXE (no Python required)
+
+```bash
+pip install pyinstaller
+python build_exe.py
+```
+
+Produces `dist/AR-Write.exe` (~150 MB, self-contained: Python + ONNX + OpenCV + frontend).
+
+> The ONNX models are bundled automatically. Users just double-click `AR-Write.exe` -- zero dependencies, no console window, browser opens on its own. Ideal for non-technical users.
+
 ## Gestures
 
 | Gesture | Action | Notes |
