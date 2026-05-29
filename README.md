@@ -47,7 +47,22 @@ python build_exe.py
 
 生成 `dist/AR-Write.exe`（~150 MB，自包含 Python + ONNX + OpenCV + 前端）。
 
-> 打包时自动合并 ONNX 模型，用户双击 `AR-Write.exe` 即可启动——零依赖、无控制台窗口、浏览器自动打开。适合分发给非技术用户。
+### 一键发布到 GitHub Release
+
+```bash
+# 先装 GitHub CLI 并登录（仅一次）
+# winget install GitHub.cli  或  scoop install gh
+gh auth login
+
+# 一键构建 + 打标签 + 发布
+python release.py                    # 自动版本号 v2026.05.30
+python release.py --version v1.2.0   # 指定版本号
+python release.py --dry-run          # 仅构建，不发布
+```
+
+发布后用户直接从 GitHub Releases 下载 `AR-Write.exe` 即可使用。
+
+> `release.py` 会先跑 `build_exe.py` 打包，再推到 GitHub。`AR-Write.exe` 零依赖——双击即用、无控制台、浏览器自动打开。
 
 ## 手势操作
 
@@ -106,10 +121,12 @@ python build_exe.py
 ## 项目结构
 
 ```
-launcher.py  一键启动入口
-backend/     Python 后端 (OpenCV + MediaPipe/ONNX + FastAPI，内置前端)
-frontend/    Web 前端 (Canvas 2D + Vanilla JS ES Modules)
-docs/        设计文档与实施计划
+launcher.py    一键启动入口
+build_exe.py   打包为独立 .exe
+release.py     一键发布到 GitHub Release
+backend/       Python 后端 (OpenCV + MediaPipe/ONNX + FastAPI，内置前端)
+frontend/      Web 前端 (Canvas 2D + Vanilla JS ES Modules)
+docs/          设计文档与实施计划
 ```
 
 ## 技术栈

@@ -47,7 +47,20 @@ python build_exe.py
 
 Produces `dist/AR-Write.exe` (~150 MB, self-contained: Python + ONNX + OpenCV + frontend).
 
-> The ONNX models are bundled automatically. Users just double-click `AR-Write.exe` -- zero dependencies, no console window, browser opens on its own. Ideal for non-technical users.
+### One-Click GitHub Release
+
+```bash
+# Install GitHub CLI & sign in (one-time)
+# winget install GitHub.cli   or   scoop install gh
+gh auth login
+
+# Build + tag + publish in one command
+python release.py                    # auto version (v2026.05.30)
+python release.py --version v1.2.0   # custom version
+python release.py --dry-run          # build only, skip publishing
+```
+
+Users then download `AR-Write.exe` directly from GitHub Releases -- double-click and go, zero dependencies.
 
 ## Gestures
 
@@ -106,10 +119,12 @@ Three-layer feedback system keeps you informed:
 ## Project Structure
 
 ```
-launcher.py   One-click entry point
-backend/     Python backend (OpenCV + MediaPipe/ONNX + FastAPI, serves frontend)
-frontend/    Web frontend (Canvas 2D + Vanilla JS ES Modules)
-docs/        Design documents and implementation plans
+launcher.py     One-click entry point
+build_exe.py    Build standalone .exe
+release.py      One-click GitHub Release
+backend/       Python backend (OpenCV + MediaPipe/ONNX + FastAPI, serves frontend)
+frontend/      Web frontend (Canvas 2D + Vanilla JS ES Modules)
+docs/          Design documents and implementation plans
 ```
 
 ## Tech Stack

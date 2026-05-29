@@ -8,3 +8,9 @@ venv/
 .DS_Store
 Thumbs.db
 backend/.models/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+*.exe
