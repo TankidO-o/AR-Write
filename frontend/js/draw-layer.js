@@ -8,6 +8,7 @@ export class DrawLayer {
     this.cursorCtx = this.cursorCanvas.getContext('2d');
 
     this.strokes = [];
+    this.redoStack = [];
     this.currentStroke = null;
     this.lineWidth = 4;
     this.color = '#00ff88';
@@ -43,6 +44,7 @@ export class DrawLayer {
       erased: false,
       bbox: { x: pt.x, y: pt.y, w: 0, h: 0 },
     };
+    this.redoStack = [];
     this.activeCtx.clearRect(0, 0, this.activeCanvas.width, this.activeCanvas.height);
     this.activeCtx.strokeStyle = this.color;
     this.activeCtx.lineWidth = this.lineWidth;
@@ -168,6 +170,7 @@ export class DrawLayer {
     for (let i = this.strokes.length - 1; i >= 0; i--) {
       if (!this.strokes[i].erased) {
         this.strokes[i].erased = true;
+        this.redoStack.push(this.strokes[i]);
         this._redrawHistory();
         return true;
       }
@@ -175,8 +178,17 @@ export class DrawLayer {
     return false;
   }
 
+  redo() {
+    if (this.redoStack.length === 0) return false;
+    const stroke = this.redoStack.pop();
+    stroke.erased = false;
+    this._redrawHistory();
+    return true;
+  }
+
   clearAll() {
     for (const s of this.strokes) s.erased = true;
+    this.redoStack = [];
     this._redrawHistory();
   }
 
