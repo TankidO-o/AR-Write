@@ -4,6 +4,7 @@ const Gesture = Object.freeze({
   IDLE:   'idle',
   WRITE:  'write',
   ERASE:  'erase',
+  CLEAR:  'clear',
 });
 
 // MediaPipe hand landmark indices
@@ -89,6 +90,11 @@ export function computeGestureScores(kp, currentState) {
   scores[Gesture.ERASE] = Math.round(
     ie * 25 + me * 25 + re * 25 + pe * 25);
 
+  // CLEAR: fist — all fingers curled + thumb wrapped
+  const tw = thumbWrapScore(K(TIP.THUMB), K(MCP.INDEX), palmSize);
+  scores[Gesture.CLEAR] = Math.round(
+    ic * 40 + mc * 20 + rc * 15 + pc * 15 + tw * 10);
+
   return scores;
 }
 
@@ -112,25 +118,21 @@ export class GestureStateMachine {
     this.deadZoneMs = deadZoneMs;
     this.scoreThreshold = scoreThreshold;
 
-    // Erase-hold-to-clear: hold erase gesture still for 1500 ms
-    this.clearHoldMs = 1500;
+    // Clear: hold fist for 1000 ms
+    this.clearHoldMs = 1000;
     // Undo: quick pinch-open pulse (< 300 ms, no stroke drawn)
     this.undoPulseMaxMs = 300;
     this.undoDeadZoneMs = 500;
-    // Stability: how far the palm can drift while waiting for clear (normalized coords)
-    this.eraseStableThreshold = 0.03;
 
     this.state = Gesture.IDLE;
     this.prevState = Gesture.IDLE;
     this.debounceCounter = 0;
     this.idleCounter = 0;
     this.lastSwitchTime = 0;
+    this.clearStartTime = null;
     this.pendingGesture = null;
     this.pendingCounter = 0;
 
-    this._eraseStableAnchor = null;
-    this._eraseStableDuration = 0;
-    this._eraseStableLastTs = 0;
     this._writeStartTime = null;
     this._writeStartedStroke = false;
     this._lastUndoTime = 0;
@@ -257,11 +259,10 @@ export class GestureStateMachine {
       this.eraseFilterY.reset();
     }
 
-    // Reset erase stability tracking when leaving ERASE
-    if (newState !== Gesture.ERASE) {
-      this._eraseStableAnchor = null;
-      this._eraseStableDuration = 0;
-      this._eraseStableLastTs = 0;
+    if (this.state === Gesture.CLEAR) {
+      this.clearStartTime = now;
+    } else {
+      this.clearStartTime = null;
     }
 
     if (this.onGestureChange) {
@@ -307,43 +308,25 @@ export class GestureStateMachine {
         const ex = this.eraseFilterX.filter(pc.x, ts / 1000);
         const ey = this.eraseFilterY.filter(pc.y, ts / 1000);
         if (this.onEraseAt) this.onEraseAt({ x: ex, y: ey });
-
-        // Stability detection: hold still for clearHoldMs to trigger clear
-        const now = Date.now();
-        if (this._eraseStableAnchor === null) {
-          this._eraseStableAnchor = { x: pc.x, y: pc.y };
-          this._eraseStableDuration = 0;
-          this._eraseStableLastTs = now;
-        }
-        const dx = pc.x - this._eraseStableAnchor.x;
-        const dy = pc.y - this._eraseStableAnchor.y;
-        const moved = Math.hypot(dx, dy);
-
-        if (moved < this.eraseStableThreshold) {
-          if (this._eraseStableLastTs > 0) {
-            this._eraseStableDuration += (now - this._eraseStableLastTs);
-          }
-          const progress = Math.min(this._eraseStableDuration / this.clearHoldMs, 1);
+        break;
+      }
+      case Gesture.CLEAR: {
+        if (this.clearStartTime !== null) {
+          const elapsed = Date.now() - this.clearStartTime;
+          const progress = Math.min(elapsed / this.clearHoldMs, 1);
           if (this.onClearProgress) this.onClearProgress(progress);
           if (progress >= 1) {
             if (this.onClear) this.onClear();
-            this._eraseStableAnchor = null;
-            this._eraseStableDuration = 0;
             this._transition(Gesture.IDLE);
           }
-        } else {
-          this._eraseStableAnchor = { x: pc.x, y: pc.y };
-          this._eraseStableDuration = 0;
-          if (this.onClearProgress) this.onClearProgress(0);
         }
-        this._eraseStableLastTs = now;
         break;
       }
     }
   }
 
   isActive() {
-    return this.state === Gesture.WRITE || this.state === Gesture.ERASE;
+    return this.state === Gesture.WRITE || this.state === Gesture.ERASE || this.state === Gesture.CLEAR;
   }
 }
 

@@ -25,9 +25,9 @@ const VIDEO_ASPECT = 4 / 3;
 
 const BUILTIN_META = [
   { id: 'write',  label: '书写',   icon: '✍️', desc: '拇指食指尖捏合，其余三指蜷曲' },
-  { id: 'clear',  label: '清空',   icon: '✊', desc: '擦除手势保持静止1.5秒' },
+  { id: 'clear',  label: '清空',   icon: '✊', desc: '四指握拳保持1秒，拇指包在外侧' },
   { id: 'erase',  label: '擦除',   icon: '🖐️', desc: '五指完全伸直展开，区域擦除' },
-  { id: 'undo',   label: '撤销',   icon: '✌️', desc: '快速捏合后立即松开' },
+  { id: 'undo',   label: '撤销',   icon: '✌️', desc: '快速捏合后立即松开（不落笔）' },
 ];
 
 const AVAILABLE_ACTIONS = [

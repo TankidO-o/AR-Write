@@ -111,6 +111,10 @@ class App {
       } else if (g === Gesture.ERASE) {
         this.feedback.showGestureStatus('🖐️', '擦除',
           '#4488ff', `· ${this.draw.eraseRadius}px`);
+        this.feedback.hideHoldProgress();
+      } else if (g === Gesture.CLEAR) {
+        this.feedback.showGestureStatus('✊', '清空',
+          '#ff4444', '· 握拳保持1秒');
       } else {
         this.feedback.hideGestureStatus();
         this.feedback.hideHoldProgress();
@@ -146,7 +150,7 @@ class App {
     };
     this.gesture.onClearProgress = (p) => {
       if (p > 0) {
-        this.feedback.showHoldProgress(p, '🖐️', '#ff4444');
+        this.feedback.showHoldProgress(p, '✊', '#ff4444');
       } else {
         this.feedback.hideHoldProgress();
       }
@@ -257,7 +261,36 @@ class App {
       }
     };
 
+    // ── Gesture hint overlay (dismissable) ──
+    this._showGestureHints();
+
     requestAnimationFrame(() => this._renderLoop());
+  }
+
+  _showGestureHints() {
+    const vc = document.getElementById('video-container');
+    const hint = document.createElement('div');
+    hint.className = 'gh-overlay';
+    hint.innerHTML = `
+      <div class="gh-card">
+        <div class="gh-title">🖐️ 手势指南</div>
+        <div class="gh-row"><span class="gh-icon">🤏</span> 拇指食指捏合 — <b style="color:#00ff88">书写</b></div>
+        <div class="gh-row"><span class="gh-icon">🖐️</span> 五指张开 — <b style="color:#4488ff">擦除</b></div>
+        <div class="gh-row"><span class="gh-icon">✊</span> 握拳保持 — <b style="color:#ff4444">清空</b></div>
+        <div class="gh-row"><span class="gh-icon">🤏👆</span> 快速捏合后松开 — <b style="color:#cc66ff">撤销</b></div>
+        <button class="gh-dismiss">知道了</button>
+      </div>`;
+    vc.appendChild(hint);
+    hint.querySelector('.gh-dismiss').addEventListener('click', () => {
+      hint.style.opacity = '0';
+      setTimeout(() => hint.remove(), 300);
+    });
+    setTimeout(() => {
+      if (hint.parentNode) {
+        hint.style.opacity = '0';
+        setTimeout(() => hint.remove(), 300);
+      }
+    }, 8000);
   }
 
   _onFrame(data) {

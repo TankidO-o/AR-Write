@@ -8,11 +8,16 @@ export class FeedbackLayer {
     const container = document.getElementById(containerId);
     if (!container) throw new Error(`Container #${containerId} not found`);
 
+    // Wrapper to counter parent scaleX(-1) mirror
+    const wrap = document.createElement('div');
+    wrap.className = 'fb-wrap';
+    container.appendChild(wrap);
+
     // L1 — Gesture status card
     this._l1 = document.createElement('div');
     this._l1.className = 'fb-status';
     this._l1.style.opacity = '0';
-    container.appendChild(this._l1);
+    wrap.appendChild(this._l1);
 
     // L2 — Hold progress ring (SVG)
     this._l2 = document.createElement('div');
@@ -28,13 +33,13 @@ export class FeedbackLayer {
     this._l2.style.display = 'none';
     this._l2Fill = this._l2.querySelector('.fb-progress-fill');
     this._l2Icon = this._l2.querySelector('.fb-progress-icon');
-    container.appendChild(this._l2);
+    wrap.appendChild(this._l2);
 
     // L3 — Toast
     this._l3 = document.createElement('div');
     this._l3.className = 'fb-toast';
     this._l3.style.opacity = '0';
-    container.appendChild(this._l3);
+    wrap.appendChild(this._l3);
 
     this._l3Timer = null;
   }

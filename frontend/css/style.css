@@ -70,6 +70,13 @@ body { background: #0a0a14; color: #eee; font-family: 'Segoe UI', system-ui, san
 
 /* ── Feedback Layer ── */
 
+/* Feedback wrapper — counters parent scaleX(-1) mirror */
+.fb-wrap {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 50;
+  transform: scaleX(-1);
+}
+
 /* L1: Gesture Status Card (top-right of video-container) */
 .fb-status {
   position: absolute; top: 12px; right: 12px; z-index: 50;
@@ -230,6 +237,27 @@ body { background: #0a0a14; color: #eee; font-family: 'Segoe UI', system-ui, san
   padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
 }
 .cg-cancel-btn:hover { background: #442; }
+
+/* ── Gesture Hint Overlay ── */
+.gh-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 200; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.5); transition: opacity 0.3s;
+}
+.gh-card {
+  background: rgba(10,10,30,0.95); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px; padding: 24px 28px; max-width: 320px; text-align: center;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.gh-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #eee; }
+.gh-row { font-size: 14px; color: #bbb; padding: 6px 0; text-align: left; }
+.gh-icon { font-size: 20px; margin-right: 6px; vertical-align: middle; }
+.gh-dismiss {
+  margin-top: 16px; padding: 8px 28px; border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px; background: rgba(0,255,136,0.1); color: #00ff88;
+  font-size: 14px; cursor: pointer; transition: all 0.15s;
+}
+.gh-dismiss:hover { background: rgba(0,255,136,0.2); border-color: #00ff88; }
 
 @media (max-width: 500px) {
   #cg-panel { width: 100vw; }
