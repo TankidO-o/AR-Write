@@ -1,69 +1,116 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #0a0a14; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; }
-#app { display: flex; flex-direction: column; height: 100vh; }
-#video-container { flex: 1; position: relative; overflow: hidden; background: #000; min-height: 0; transform: scaleX(-1); }
+
+/* ── App layout ── */
+#app { display: flex; height: 100vh; }
+#video-container {
+  flex: 1; position: relative; overflow: hidden; background: #000;
+  min-height: 0; transform: scaleX(-1);
+}
 #webcam { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; object-fit: contain; z-index: 0; pointer-events: none; }
 #video-container canvas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 #layer-skeleton { z-index: 1; }
 #layer-history { z-index: 2; }
 #layer-active { z-index: 2; }
 #layer-cursor { z-index: 3; }
+
+/* ── Sidebar toolbar ── */
 #toolbar {
-  display: flex; align-items: center; gap: 14px;
-  padding: 12px 20px;
-  background: rgba(15,15,30,0.95); border-top: 1px solid rgba(255,255,255,0.06);
+  width: 160px; flex-shrink: 0; overflow-y: auto;
+  background: rgba(10,10,25,0.97); border-right: 1px solid rgba(255,255,255,0.06);
+  padding: 10px; display: flex; flex-direction: column; gap: 8px;
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  flex-shrink: 0;
 }
-#status-bar {
-  display: flex; gap: 16px;
-  padding: 4px 20px; font-size: 11px; color: rgba(255,255,255,0.3);
-  background: rgba(8,8,20,0.95); flex-shrink: 0;
-  letter-spacing: 0.03em;
+.tb-card {
+  background: rgba(17,17,40,0.6); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px; padding: 10px;
 }
-#ws-status { color: rgba(255,100,100,0.7); font-size: 8px; line-height: 1; vertical-align: middle; }
-#ws-status.connected { color: rgba(100,255,100,0.7); }
-#gesture-display { text-transform: capitalize; }
-.tb-colors { display: flex; align-items: center; gap: 8px; }
-.tb-color-btn {
-  width: 24px; height: 24px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.1);
-  cursor: pointer; transition: all 0.2s ease;
+.tb-card-label {
+  font-size: 10px; color: #555; text-transform: uppercase;
+  letter-spacing: 0.1em; margin-bottom: 8px;
 }
-.tb-color-btn:hover { border-color: rgba(255,255,255,0.4); transform: scale(1.15); }
-.tb-color-btn.active { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.3); transform: scale(1.1); }
-.tb-color-picker { width: 24px; height: 24px; border: none; cursor: pointer; background: none; padding: 0; border-radius: 50%; }
-.tb-size { display: flex; align-items: center; gap: 8px; }
-.tb-size label { font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: 0.04em; }
-.tb-size-slider { width: 100px; accent-color: rgba(255,255,255,0.5); height: 4px; }
-.tb-size-val { font-size: 11px; color: rgba(255,255,255,0.35); min-width: 32px; }
-.tb-actions { display: flex; gap: 4px; margin-left: auto; }
+.tb-colors { display: flex; flex-wrap: wrap; gap: 5px; }
+.tb-swatch {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.08);
+  cursor: pointer; transition: all 0.15s ease; padding: 0;
+}
+.tb-swatch:hover { border-color: rgba(255,255,255,0.4); transform: scale(1.15); }
+.tb-swatch.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+.tb-color-picker { width: 22px; height: 22px; border: none; cursor: pointer; background: none; padding: 0; border-radius: 50%; }
+.tb-preset-row { display: flex; gap: 4px; margin-bottom: 6px; }
+.tb-preset {
+  flex: 1; padding: 5px 0; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px; background: transparent; color: #888;
+  font-size: 11px; cursor: pointer; transition: all 0.15s;
+}
+.tb-preset:hover { color: #ccc; border-color: rgba(255,255,255,0.2); }
+.tb-preset.active { background: rgba(0,255,136,0.1); color: #00ff88; border-color: rgba(0,255,136,0.3); }
+.tb-slider { width: 100%; height: 3px; accent-color: rgba(0,255,136,0.5); margin: 4px 0; }
+.tb-slider-labels { display: flex; justify-content: space-between; font-size: 9px; color: #444; }
+.tb-actions { display: flex; gap: 4px; }
 .tb-btn {
-  width: 32px; height: 32px; border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px; background: transparent; color: rgba(255,255,255,0.5);
-  cursor: pointer; font-size: 15px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s ease;
+  flex: 1; height: 30px; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 7px; background: transparent; color: rgba(255,255,255,0.4);
+  cursor: pointer; font-size: 14px; display: flex; align-items: center;
+  justify-content: center; transition: all 0.15s;
 }
-.tb-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); }
+.tb-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.15); }
 
-/* ── Gesture feedback toast ── */
-.gf-toast {
-  position: fixed; top: 28px; left: 50%;
+/* ── Status bar (bottom) ── */
+#status-bar {
+  position: fixed; bottom: 0; left: 160px; right: 0;
+  display: flex; gap: 16px; padding: 3px 16px; font-size: 10px;
+  color: rgba(255,255,255,0.2); background: rgba(8,8,20,0.95);
+  z-index: 100; pointer-events: none;
+}
+#ws-status { color: rgba(255,100,100,0.5); font-size: 8px; vertical-align: middle; }
+#ws-status.connected { color: rgba(100,255,100,0.5); }
+#gesture-display { text-transform: capitalize; }
+
+/* ── Feedback Layer ── */
+
+/* L1: Gesture Status Card (top-right of video-container) */
+.fb-status {
+  position: absolute; top: 12px; right: 12px; z-index: 50;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 10px;
+  background: rgba(10,10,30,0.9); border: 1px solid rgba(0,255,136,0.2);
+  pointer-events: none; transition: opacity 0.3s, transform 0.2s;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.fb-status-icon { font-size: 20px; line-height: 1; }
+.fb-status-text { display: flex; flex-direction: column; gap: 1px; }
+.fb-status-name { font-size: 12px; font-weight: 600; }
+.fb-status-detail { font-size: 10px; color: #555; }
+
+/* L2: Hold Progress Ring (center of video-container) */
+.fb-progress {
+  position: absolute; top: 50%; left: 50%; z-index: 55;
+  transform: translate(-50%, -50%); width: 100px; height: 100px;
+  pointer-events: none;
+}
+.fb-progress-svg { width: 100%; height: 100%; }
+.fb-progress-track { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 4; }
+.fb-progress-fill { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dasharray 0.1s linear; }
+.fb-progress-icon {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 28px;
+}
+
+/* L3: Action Toast (top-center, above video-container) */
+.fb-toast {
+  position: absolute; top: 16px; left: 50%; z-index: 60;
   transform: translateX(-50%) translateY(-10px);
-  z-index: 2000; opacity: 0;
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 24px; border-radius: 28px;
-  background: rgba(10,10,30,0.85); border: 1px solid rgba(255,255,255,0.12);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  font-size: 14px; font-weight: 500; letter-spacing: 0.02em;
-  pointer-events: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  padding: 8px 20px; border-radius: 20px;
+  background: rgba(10,10,30,0.88); border: 1px solid rgba(255,255,255,0.1);
+  font-size: 13px; font-weight: 500;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
-.gf-icon { font-size: 20px; line-height: 1; }
-.gf-text { white-space: nowrap; }
 
-/* ── Custom gesture panel ── */
+/* ── Custom Gesture Panel ── */
 #cg-panel {
   position: fixed; top: 0; right: 0; width: 400px; height: 100vh;
   z-index: 1000; background: #14142b; border-left: 1px solid #1f1f4a;
@@ -110,9 +157,7 @@ body { background: #0a0a14; color: #eee; font-family: 'Segoe UI', system-ui, san
   display: flex; align-items: center; gap: 10px;
   padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.cg-threshold-slider {
-  flex: 1; height: 4px; accent-color: #00ff88; min-width: 0;
-}
+.cg-threshold-slider { flex: 1; height: 4px; accent-color: #00ff88; min-width: 0; }
 .cg-threshold-val {
   font-size: 14px; font-weight: 700; color: #00ff88;
   min-width: 28px; text-align: right; font-variant-numeric: tabular-nums;
@@ -163,9 +208,7 @@ body { background: #0a0a14; color: #eee; font-family: 'Segoe UI', system-ui, san
   cursor: pointer; text-align: left; margin-bottom: 6px; transition: all 0.15s;
 }
 .cg-action-option:hover { border-color: #00ff88; color: #fff; }
-.cg-action-color-row {
-  display: flex; gap: 6px; margin-top: 8px; margin-bottom: 6px;
-}
+.cg-action-color-row { display: flex; gap: 6px; margin-top: 8px; margin-bottom: 6px; }
 .cg-action-color-swatch {
   width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
   border: 2px solid transparent; transition: border-color 0.15s;
@@ -188,11 +231,8 @@ body { background: #0a0a14; color: #eee; font-family: 'Segoe UI', system-ui, san
 }
 .cg-cancel-btn:hover { background: #442; }
 
-/* ── Toolbar custom gesture button ── */
-.tb-btn-custom {
-  font-size: 18px; font-weight: bold;
-}
-
 @media (max-width: 500px) {
   #cg-panel { width: 100vw; }
+  #toolbar { width: 120px; }
+  #status-bar { left: 120px; }
 }
