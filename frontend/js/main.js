@@ -23,21 +23,37 @@ class App {
     this._skelCtx = this._skelCanvas.getContext('2d');
     this.feedback = new FeedbackLayer('video-container');
     this.customGestures = new CustomGestureManager(() => this._latestHand);
-    this._bgColor = '#000000';
+    this._mode = 'camera';  // 'camera' | 'blackboard' | 'whiteboard'
   }
 
-  setBackground(bgColor) {
-    this._bgColor = bgColor;
+  _cycleMode() {
+    const modes = ['camera', 'blackboard', 'whiteboard'];
+    const idx = modes.indexOf(this._mode);
+    const next = modes[(idx + 1) % 3];
+    this._setMode(next);
+  }
+
+  _setMode(mode) {
+    this._mode = mode;
     const vc = document.getElementById('video-container');
-    if (vc) vc.style.background = bgColor === 'transparent' ? 'transparent' : bgColor;
-    this.toolbar.updateBgButton(bgColor === '#000000');
-  }
+    const video = document.getElementById('webcam');
+    if (!vc) return;
 
-  _toggleBackground() {
-    const next = this._bgColor === '#000000' ? '#ffffff' : '#000000';
-    this.setBackground(next);
-    const label = next === '#000000' ? '黑板' : '白板';
-    this.feedback.showActionToast('🖼️', `切换为${label}`, '#ffaa00', 800);
+    const labels = { camera: '摄像头', blackboard: '黑板', whiteboard: '白板' };
+
+    if (mode === 'camera') {
+      vc.style.background = '#000';
+      if (video) video.style.display = 'block';
+    } else if (mode === 'blackboard') {
+      vc.style.background = '#111';
+      if (video) video.style.display = 'none';
+    } else {
+      vc.style.background = '#fff';
+      if (video) video.style.display = 'none';
+    }
+
+    this.toolbar.updateModeButton(mode);
+    this.feedback.showActionToast('🖼️', `切换为${labels[mode]}`, '#ffaa00', 800);
   }
 
   async start() {
@@ -102,7 +118,7 @@ class App {
     this.toolbar.onRedo = () => this.draw.redo();
     this.toolbar.onCalibrate = () => this._runCalibration();
     this.toolbar.onCustomGestures = () => this.customGestures.showPanel();
-    this.toolbar.onBackgroundToggle = () => this._toggleBackground();
+    this.toolbar.onModeCycle = () => this._cycleMode();
     this.toolbar.onShowHints = () => this._showGestureHints();
 
     this.gesture.onGestureChange = (g, prev) => {
@@ -261,11 +277,11 @@ class App {
           this.draw.saveScreenshot();
           this.feedback.showActionToast('💾', `截图 (${name})`, '#4488ff', 1000);
           break;
-        case 'setBackground':
-          this.setBackground(action.value);
-          const bgLabel = action.value === '#000000' ? '黑色' : action.value === '#ffffff' ? '白色' : '透明';
-          this.feedback.showActionToast('🖼️', `背景: ${bgLabel}`, '#ffaa00', 800);
+        case 'setBackground': {
+          const mode = action.value === '#000000' ? 'blackboard' : action.value === '#ffffff' ? 'whiteboard' : 'camera';
+          this._setMode(mode);
           break;
+        }
       }
     };
 

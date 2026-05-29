@@ -20,7 +20,7 @@ export class Toolbar {
     this.onRedo = null;
     this.onCalibrate = null;
     this.onCustomGestures = null;
-    this.onBackgroundToggle = null;
+    this.onModeCycle = null;
     this.onShowHints = null;
   }
 
@@ -77,7 +77,7 @@ export class Toolbar {
           <button class="tb-btn" title="截图保存" id="tb-save">💾</button>
         </div>
         <div class="tb-actions" style="margin-top:4px;">
-          <button class="tb-btn tb-bg-btn" title="切换黑板/白板" id="tb-bg-toggle">🖼️ 黑板</button>
+          <button class="tb-btn tb-bg-btn" title="切换模式：摄像头/黑板/白板" id="tb-mode-cycle">📷 摄像头</button>
         </div>
       </div>
 
@@ -153,9 +153,9 @@ export class Toolbar {
     el.querySelector('#tb-calibrate').addEventListener('click', () => { if (this.onCalibrate) this.onCalibrate(); });
     el.querySelector('#tb-custom-gestures').addEventListener('click', () => { if (this.onCustomGestures) this.onCustomGestures(); });
 
-    // Background toggle
-    el.querySelector('#tb-bg-toggle').addEventListener('click', () => {
-      if (this.onBackgroundToggle) this.onBackgroundToggle();
+    // Mode cycle
+    el.querySelector('#tb-mode-cycle').addEventListener('click', () => {
+      if (this.onModeCycle) this.onModeCycle();
     });
     // Hint overlay
     el.querySelector('#tb-hints').addEventListener('click', () => {
@@ -163,9 +163,11 @@ export class Toolbar {
     });
   }
 
-  updateBgButton(isDark) {
-    const btn = document.getElementById('tb-bg-toggle');
-    if (btn) btn.textContent = isDark ? '🖼️ 黑板' : '🖼️ 白板';
+  updateModeButton(mode) {
+    const btn = document.getElementById('tb-mode-cycle');
+    if (!btn) return;
+    const labels = { camera: '📷 摄像头', blackboard: '⬛ 黑板', whiteboard: '⬜ 白板' };
+    btn.textContent = labels[mode] || '📷 摄像头';
   }
 
   _updateSwatchActive(el, color) {
