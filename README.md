@@ -26,27 +26,17 @@ python convert_models.py
 
 > **Python 3.14 用户**：mediapipe 暂无 3.14 wheel，系统会自动切换到 ONNX Runtime 后端。只需安装 `onnxruntime onnx opencv-python fastapi uvicorn`，然后运行一次 `python convert_models.py` 生成 ONNX 模型即可。
 
-**Windows**: 双击项目根目录的启动文件：
+**启动**：
 
-| 文件 | 说明 |
+| 平台 | 方式 |
 |------|------|
-| `start_backend.bat` | 启动后端 (WebSocket + 摄像头) |
-| `start_frontend.bat` | 启动前端 (HTTP 静态服务) |
-| `start_all.bat` | 一键启动前后端 + 自动打开浏览器 |
+| **Windows** | 双击 `launcher.py`，或在终端运行 `python launcher.py` |
+| **macOS / Linux** | 终端运行 `python launcher.py` |
+| **手动** | `cd backend && python server.py` |
 
-**手动启动**：
+浏览器自动打开 `http://localhost:8765`。首次进入会弹出悬浮手势指南（点击 `?` 可随时重新查看）。
 
-```bash
-# 终端 1 - 后端
-cd backend
-python server.py
-
-# 终端 2 - 前端
-cd frontend
-python -m http.server 8080
-```
-
-浏览器打开 `http://localhost:8080`。首次进入会弹出悬浮手势指南（点击 `?` 可随时重新查看）。
+> `launcher.py` 会自动检测 Python 版本、依赖包、hand detection 后端是否就绪，并给出明确的中文提示。前端已嵌入后端，不再需要单独的 `python -m http.server`。
 
 ## 手势操作
 
@@ -105,9 +95,10 @@ python -m http.server 8080
 ## 项目结构
 
 ```
-backend/    Python 后端 (OpenCV + MediaPipe + FastAPI)
-frontend/   Web 前端 (Canvas 2D + Vanilla JS ES Modules)
-docs/       设计文档与实施计划
+launcher.py  一键启动入口
+backend/     Python 后端 (OpenCV + MediaPipe/ONNX + FastAPI，内置前端)
+frontend/    Web 前端 (Canvas 2D + Vanilla JS ES Modules)
+docs/        设计文档与实施计划
 ```
 
 ## 技术栈

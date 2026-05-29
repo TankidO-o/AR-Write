@@ -26,27 +26,17 @@ python convert_models.py
 
 > **Python 3.14 users**: mediapipe does not have 3.14 wheels yet. The system auto‑falls back to the ONNX Runtime backend. Install `onnxruntime onnx opencv-python fastapi uvicorn`, then run `python convert_models.py` once to generate the ONNX models.
 
-**Windows**: Double-click the launcher files in the project root:
+**Launch**:
 
-| File | Description |
-|------|-------------|
-| `start_backend.bat` | Start backend (WebSocket + Camera) |
-| `start_frontend.bat` | Start frontend (HTTP static server) |
-| `start_all.bat` | One-click launch both + open browser |
+| Platform | Method |
+|----------|--------|
+| **Windows** | Double‑click `launcher.py`, or `python launcher.py` in terminal |
+| **macOS / Linux** | `python launcher.py` in terminal |
+| **Manual** | `cd backend && python server.py` |
 
-**Manual launch**:
+The browser opens automatically at `http://localhost:8765`. A gesture guide overlay appears on first launch (click `?` to re-open anytime).
 
-```bash
-# Terminal 1 - Backend
-cd backend
-python server.py
-
-# Terminal 2 - Frontend
-cd frontend
-python -m http.server 8080
-```
-
-Open `http://localhost:8080` in your browser. A gesture guide overlay appears on first launch (click `?` to re-open anytime).
+> `launcher.py` auto‑detects your Python version, missing dependencies, and hand‑detection backend availability, giving clear guidance in English. The frontend is embedded in the backend — no separate HTTP server required.
 
 ## Gestures
 
@@ -105,9 +95,10 @@ Three-layer feedback system keeps you informed:
 ## Project Structure
 
 ```
-backend/    Python backend (OpenCV + MediaPipe + FastAPI)
-frontend/   Web frontend (Canvas 2D + Vanilla JS ES Modules)
-docs/       Design documents and implementation plans
+launcher.py   One-click entry point
+backend/     Python backend (OpenCV + MediaPipe/ONNX + FastAPI, serves frontend)
+frontend/    Web frontend (Canvas 2D + Vanilla JS ES Modules)
+docs/        Design documents and implementation plans
 ```
 
 ## Tech Stack

@@ -1,25 +1,62 @@
+"""
+AR Gesture Writing System — unified backend + frontend server.
+
+Serves:
+  - WebSocket hand‑tracking stream   ws://host:port/ws
+  - REST API                         http://host:port/health, /frame
+  - Frontend SPA                     http://host:port/
+
+Usage:
+    python server.py                 # default: 127.0.0.1:8765
+    python server.py --host 0.0.0.0 --port 80
+"""
+
+import argparse
 import asyncio
 import json
-import time
+import os
+import sys
 import threading
+import time
+import webbrowser
+
 import cv2
+import uvicorn
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
+
 from camera import Camera
 from hand_detector import HandDetector
-import uvicorn
 
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+_FRONTEND_DIR = os.path.join(os.path.dirname(_BACKEND_DIR), "frontend")
+
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
+app = FastAPI(title="AR Gesture Writing", version="1.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 camera = Camera()
 detector = HandDetector()
 
-# Shared JPEG buffer — written by main loop, read by /frame endpoint
-_latest_jpeg = None
+_latest_jpeg: bytes | None = None
 _jpeg_lock = threading.Lock()
 
+
+# ---------------------------------------------------------------------------
+# WebSocket — hand tracking stream
+# ---------------------------------------------------------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
@@ -29,7 +66,6 @@ async def websocket_endpoint(ws: WebSocket):
     fail_count = 0
     fps = 0.0
 
-    # Handle incoming messages (heartbeat pings)
     async def handle_incoming():
         try:
             while running:
@@ -54,9 +90,12 @@ async def websocket_endpoint(ws: WebSocket):
                 continue
             fail_count = 0
 
-            # Encode frame as JPEG for the /frame endpoint (preview on frontend)
-            _, jpeg = cv2.imencode('.jpg', cv2.cvtColor(frame, cv2.COLOR_RGB2BGR),
-                                    [cv2.IMWRITE_JPEG_QUALITY, 60])
+            # Encode JPEG preview
+            _, jpeg = cv2.imencode(
+                ".jpg",
+                cv2.cvtColor(frame, cv2.COLOR_RGB2BGR),
+                [cv2.IMWRITE_JPEG_QUALITY, 60],
+            )
             with _jpeg_lock:
                 global _latest_jpeg
                 _latest_jpeg = jpeg.tobytes()
@@ -102,27 +141,93 @@ async def websocket_endpoint(ws: WebSocket):
         except Exception:
             pass
 
+
+# ---------------------------------------------------------------------------
+# REST API
+# ---------------------------------------------------------------------------
 @app.get("/health")
 async def health():
     return {"status": "ok", "camera": camera.is_opened}
 
+
 @app.get("/frame")
 async def get_frame():
-    """Serve the latest camera frame as JPEG (for frontend preview)."""
     with _jpeg_lock:
         if _latest_jpeg is None:
-            return Response(status_code=204)  # No Content — no frame yet
+            return Response(status_code=204)
         return Response(content=_latest_jpeg, media_type="image/jpeg")
 
+
+# ---------------------------------------------------------------------------
+# Frontend SPA
+# ---------------------------------------------------------------------------
+@app.get("/")
+async def index():
+    """Serve the SPA entry point."""
+    index_path = os.path.join(_FRONTEND_DIR, "index.html")
+    if os.path.isfile(index_path):
+        return HTMLResponse(open(index_path, encoding="utf-8").read())
+    return HTMLResponse("<h1>Frontend not found</h1>", status_code=404)
+
+
+# ---------------------------------------------------------------------------
+# Startup
+# ---------------------------------------------------------------------------
+def _open_browser(url: str, delay: float = 1.5):
+    """Open the browser after a short delay (non‑blocking)."""
+    time.sleep(delay)
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+
 def main():
+    parser = argparse.ArgumentParser(description="AR Gesture Writing Server")
+    parser.add_argument("--host", default="127.0.0.1", help="Listen address")
+    parser.add_argument("--port", type=int, default=8765, help="Listen port")
+    parser.add_argument("--no-browser", action="store_true", help="Don't open browser")
+    args = parser.parse_args()
+
+    # Mount frontend static assets (CSS, JS, icons)
+    if os.path.isdir(_FRONTEND_DIR):
+        app.mount("/css", StaticFiles(directory=os.path.join(_FRONTEND_DIR, "css")), name="css")
+        app.mount("/js", StaticFiles(directory=os.path.join(_FRONTEND_DIR, "js")), name="js")
+        # Serve icon files individually
+        for fname in ("icon.png", "icon.svg", "icon-512.png"):
+            fpath = os.path.join(_FRONTEND_DIR, fname)
+            if os.path.isfile(fpath):
+
+                async def _icon_handler(_p=fpath):
+                    return FileResponse(_p)
+
+                app.get(f"/{fname}")(_icon_handler)
+
+    url = f"http://{args.host}:{args.port}"
+    if args.host == "0.0.0.0":
+        url = f"http://127.0.0.1:{args.port}"
+
+    print("=" * 54)
+    print("  AR Gesture Writing System")
+    print("=" * 54)
+    print(f"  Server:   {url}")
+    print(f"  WebSocket: ws://127.0.0.1:{args.port}/ws")
+    print(f"  Frontend: embedded (no separate HTTP server)")
+    print(f"  Backend:  {'MediaPipe' if 'MediaPipe' in type(detector).__name__ else 'ONNX Runtime'}")
+    print("=" * 54)
+
+    if not args.no_browser:
+        threading.Thread(target=_open_browser, args=(url,), daemon=True).start()
+
     try:
         camera.start()
-        print("Camera started")
-        uvicorn.run(app, host="127.0.0.1", port=8765, log_level="info")
+        print("Camera started.")
+        uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     finally:
         camera.stop()
         detector.close()
-        print("Shutdown complete")
+        print("Shutdown complete.")
+
 
 if __name__ == "__main__":
     main()
