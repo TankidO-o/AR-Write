@@ -76,6 +76,26 @@ export class DrawLayer {
     this.activeCtx.clearRect(0, 0, this.activeCanvas.width, this.activeCanvas.height);
   }
 
+  _makeFragment(sourceStroke, points) {
+    const bbox = { x: points[0].x, y: points[0].y, w: 0, h: 0 };
+    for (const pt of points) {
+      const nx = Math.min(bbox.x, pt.x);
+      const ny = Math.min(bbox.y, pt.y);
+      bbox.w = Math.max(bbox.x + bbox.w, pt.x) - nx;
+      bbox.h = Math.max(bbox.y + bbox.h, pt.y) - ny;
+      bbox.x = nx;
+      bbox.y = ny;
+    }
+    return {
+      id: crypto.randomUUID(),
+      color: sourceStroke.color,
+      lineWidth: sourceStroke.lineWidth,
+      points,
+      erased: false,
+      bbox,
+    };
+  }
+
   _mergeToHistory(stroke) {
     this.historyCtx.strokeStyle = stroke.color;
     this.historyCtx.lineWidth = stroke.lineWidth;
@@ -92,24 +112,53 @@ export class DrawLayer {
   eraseAt(center) {
     const r = this.eraseRadius;
     let changed = false;
+    const newStrokes = [];
+
     for (const stroke of this.strokes) {
       if (stroke.erased) continue;
+
       // Bbox quick reject
       if (center.x + r < stroke.bbox.x || center.x - r > stroke.bbox.x + stroke.bbox.w ||
           center.y + r < stroke.bbox.y || center.y - r > stroke.bbox.y + stroke.bbox.h) {
         continue;
       }
-      // Point-by-point check
-      for (const pt of stroke.points) {
+
+      // Mark erased points
+      const keep = stroke.points.map(pt => {
         const dx = pt.x - center.x;
         const dy = pt.y - center.y;
-        if (dx * dx + dy * dy < r * r) {
-          stroke.erased = true;
-          changed = true;
-          break;
+        return (dx * dx + dy * dy < r * r) ? null : pt;
+      });
+
+      // If nothing was erased, skip
+      const anyErased = keep.some(p => p === null);
+      if (!anyErased) continue;
+
+      changed = true;
+      stroke.erased = true;
+
+      // Split remaining points into continuous segments
+      let segment = [];
+      for (const pt of keep) {
+        if (pt !== null) {
+          segment.push(pt);
+        } else {
+          if (segment.length > 2) {
+            newStrokes.push(this._makeFragment(stroke, segment));
+          }
+          segment = [];
         }
       }
+      if (segment.length > 2) {
+        newStrokes.push(this._makeFragment(stroke, segment));
+      }
     }
+
+    // Add surviving fragments
+    for (const frag of newStrokes) {
+      this.strokes.push(frag);
+    }
+
     if (changed) this._redrawHistory();
     return changed;
   }
@@ -149,6 +198,9 @@ export class DrawLayer {
 
   setColor(color) { this.color = color; }
   setLineWidth(w) { this.lineWidth = w; }
+  setEraserRadius(r) {
+    this.eraseRadius = r;
+  }
 
   // Cursor rendering
   drawWriteCursor(pt) {
