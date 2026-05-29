@@ -1,6 +1,6 @@
 # AR Gesture Writing System
 
-> An AR gesture-based writing and drawing system powered by computer vision. Use hand gestures in mid-air to write, erase, undo, switch colors, and clear the canvas — no touch, no stylus, just your webcam.
+> An AR gesture-based writing and drawing system powered by computer vision. Use hand gestures in mid-air to write, erase, undo, and clear the canvas — no touch, no stylus, just your webcam.
 
 ## Quick Start
 
@@ -41,35 +41,71 @@ cd frontend
 python -m http.server 8080
 ```
 
-Open `http://localhost:8080` in your browser.
+Open `http://localhost:8080` in your browser. A gesture guide overlay appears on first launch (click `?` to re-open anytime).
 
 ## Gestures
 
-| Gesture | Action |
-|---------|--------|
-| Pinch thumb & index finger | Write |
-| Spread all five fingers | Erase |
-| Fist (hold 1 second) | Clear canvas |
-| Pinch thumb & middle finger | Switch color |
-| Peace sign (hold 1 second) | Undo |
+| Gesture | Action | Notes |
+|---------|--------|-------|
+| 🤏 Pinch thumb & index finger | **Write** | Green crosshair at index fingertip for precision |
+| 🖐️ Spread all five fingers | **Region Erase** | Only erases stroke fragments within the circle |
+| ✊ Fist (hold 1 sec) | **Clear Canvas** | L2 progress ring shows countdown |
+| 🤏→Release quick pulse | **Undo** | Quick pinch-and-release without drawing |
+
+## Toolbar
+
+Left sidebar with 5 card sections:
+
+| Section | Features |
+|---------|----------|
+| 🎨 Colors | 6 preset swatches + color picker |
+| 🖌️ Brush | S/M/L presets + fine slider (2~20px) |
+| 🧹 Eraser | Small/Medium/Large presets (15/30/50px) |
+| 📋 Canvas | ↩ Undo · ↪ Redo · ✕ Clear · 💾 Save |
+| ⚡ Gestures | ? Guide · ⚙ Calibrate · ⚡ Custom Gestures |
+
+Click 🖼️ to cycle through **Camera / Blackboard / Whiteboard** modes. The camera feed is hidden in blackboard and whiteboard modes.
 
 ## Custom Gestures
 
-Click the ⚡ button in the toolbar to open the custom gesture panel. You can:
+Click the ⚡ button in the toolbar to open the custom gesture panel:
 
 - **Overwrite** existing built-in gestures with your own calibration data (10 samples each)
-- **Create** custom gestures with template matching (3 samples each)
+- **Create** custom gestures with template matching (3 samples each) — bind to any of 8 action types
 - Adjust per-gesture **thresholds** (40–95) and save to localStorage
+
+Available actions:
+
+| Action | Description |
+|--------|-------------|
+| 🎨 Set Color | Switch to a specific color |
+| 🖌️ Brush Size | Toggle S/M/L |
+| 🧹 Eraser Size | Toggle Small/Medium/Large |
+| ↩ Undo | Undo last stroke |
+| ↪ Redo | Redo last undone stroke |
+| ✕ Clear | Clear entire canvas |
+| 💾 Save | Download PNG screenshot |
+| 🖼️ Background | Cycle camera/blackboard/whiteboard |
+
+## Visual Feedback
+
+Three-layer feedback system keeps you informed:
+
+| Layer | Position | Content |
+|-------|----------|---------|
+| L1 Persistent | Top-right of canvas | Current gesture icon + name + color/brush info |
+| L2 Progress | Center of canvas | Ring progress bar (clear canvas countdown) |
+| L3 Transient | Top-center of canvas | Action confirmation toast, fades in 1s |
 
 ## Project Structure
 
 ```
 backend/    Python backend (OpenCV + MediaPipe + FastAPI)
-frontend/   Web frontend (Canvas 2D + Vanilla JS)
-docs/       Design documents and implementation plan
+frontend/   Web frontend (Canvas 2D + Vanilla JS ES Modules)
+docs/       Design documents and implementation plans
 ```
 
 ## Tech Stack
 
 **Backend**: Python, OpenCV, MediaPipe Hands, FastAPI, WebSocket
-**Frontend**: HTML5 Canvas 2D, WebSocket API, getUserMedia
+**Frontend**: HTML5 Canvas 2D, WebSocket API, ES Modules
