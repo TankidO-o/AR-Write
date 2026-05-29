@@ -36,29 +36,27 @@ class App {
   _setMode(mode) {
     this._mode = mode;
     const vc = document.getElementById('video-container');
+    // The actual camera feed may be <video id="webcam"> OR <canvas id="webcam-canvas"> (backend fallback)
     const video = document.getElementById('webcam');
-    console.log('[App] _setMode:', mode, 'video:', !!video, 'vc:', !!vc);
+    const fbCanvas = document.getElementById('webcam-canvas');
+    console.log('[App] _setMode:', mode, 'video:', !!video, 'fbCanvas:', !!fbCanvas);
 
-    if (!vc || !video) return;
+    if (!vc) return;
 
     const labels = { camera: '摄像头', blackboard: '黑板', whiteboard: '白板' };
 
     if (mode === 'camera') {
       vc.style.background = '#000';
-      video.style.display = '';
-      video.style.removeProperty('visibility');
-      video.style.opacity = '1';
+      if (video) { video.style.display = ''; video.style.removeProperty('visibility'); video.style.opacity = '1'; }
+      if (fbCanvas) { fbCanvas.style.display = ''; fbCanvas.style.removeProperty('visibility'); }
     } else {
       vc.style.background = mode === 'blackboard' ? '#111' : '#fff';
-      video.style.display = 'none';
-      video.style.visibility = 'hidden';
+      if (video) { video.style.display = 'none'; video.style.visibility = 'hidden'; }
+      if (fbCanvas) { fbCanvas.style.display = 'none'; fbCanvas.style.visibility = 'hidden'; }
     }
 
     this.toolbar.updateModeButton(mode);
     this.feedback.showActionToast('🖼️', `切换为${labels[mode]}`, '#ffaa00', 800);
-
-    // Verify it took effect
-    console.log('[App] _setMode done — video.display:', video.style.display, 'video.visibility:', video.style.visibility);
   }
 
   async start() {
@@ -188,18 +186,17 @@ class App {
 
     this.perf.onLevelChange = (level) => {
       const video = document.getElementById('webcam');
-      if (!video) return;
+      const fbCanvas = document.getElementById('webcam-canvas');
       if (level === 1) {
-        if (this._mode === 'camera') video.style.opacity = '0.3';
+        if (this._mode === 'camera') {
+          if (video) video.style.opacity = '0.3';
+        }
       } else if (level === 2) {
-        video.style.display = 'none';
+        if (video) video.style.display = 'none';
+        if (fbCanvas) fbCanvas.style.display = 'none';
       } else if (this._mode === 'camera') {
-        video.style.opacity = '1';
-        video.style.display = '';
-        video.style.removeProperty('visibility');
-      } else {
-        video.style.display = 'none';
-        video.style.visibility = 'hidden';
+        if (video) { video.style.opacity = '1'; video.style.display = ''; video.style.removeProperty('visibility'); }
+        if (fbCanvas) { fbCanvas.style.display = ''; fbCanvas.style.removeProperty('visibility'); }
       }
     };
 
