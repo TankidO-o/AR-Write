@@ -25,17 +25,20 @@ const VIDEO_ASPECT = 4 / 3;
 
 const BUILTIN_META = [
   { id: 'write',  label: '书写',   icon: '✍️', desc: '拇指食指尖捏合，其余三指蜷曲' },
-  { id: 'clear',  label: '清空',   icon: '✊', desc: '四指紧握成拳，拇指包在手指外侧' },
-  { id: 'erase',  label: '擦除',   icon: '🖐️', desc: '五指完全伸直展开' },
-  { id: 'switch', label: '切换颜色', icon: '🔄', desc: '拇指中指尖捏合，食指蜷曲，其余伸直' },
-  { id: 'undo',   label: '撤销',   icon: '✌️', desc: '食指和中指伸直，无名指小指蜷曲' },
+  { id: 'clear',  label: '清空',   icon: '✊', desc: '擦除手势保持静止1.5秒' },
+  { id: 'erase',  label: '擦除',   icon: '🖐️', desc: '五指完全伸直展开，区域擦除' },
+  { id: 'undo',   label: '撤销',   icon: '✌️', desc: '快速捏合后立即松开' },
 ];
 
 const AVAILABLE_ACTIONS = [
-  { type: 'setColor', label: '切换颜色', icon: '🎨', needsColor: true },
-  { type: 'undo',     label: '撤销',   icon: '↩',  needsColor: false },
-  { type: 'clear',    label: '清空画布', icon: '✕',  needsColor: false },
-  { type: 'save',     label: '保存截图', icon: '💾', needsColor: false },
+  { type: 'setColor',      label: '切换颜色',   icon: '🎨', needsColor: true },
+  { type: 'setBrushSize',  label: '笔刷大小',   icon: '🖌️', needsSize: true },
+  { type: 'setEraserSize', label: '橡皮大小',   icon: '🧹', needsSize: true },
+  { type: 'undo',          label: '撤销',       icon: '↩',  needsColor: false },
+  { type: 'redo',          label: '重做',       icon: '↪',  needsColor: false },
+  { type: 'clear',         label: '清空画布',   icon: '✕',  needsColor: false },
+  { type: 'save',          label: '保存截图',   icon: '💾', needsColor: false },
+  { type: 'setBackground', label: '切换背景色', icon: '🖼️', needsBackground: true },
 ];
 
 function dist2d(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -376,12 +379,21 @@ export class CustomGestureManager {
       listEl.appendChild(empty);
     } else {
       for (const g of this._gestures) {
-        const actionInfo = AVAILABLE_ACTIONS.find(a => a.type === g.action.type);
-        const actionLabel = actionInfo
-          ? (g.action.type === 'setColor' && g.action.value
-              ? `${actionInfo.icon} ${actionInfo.label}: <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${g.action.value};vertical-align:middle"></span>`
-              : `${actionInfo.icon} ${actionInfo.label}`)
-          : g.action.type;
+        const actionLabel = (() => {
+          const info = AVAILABLE_ACTIONS.find(a => a.type === g.action.type);
+          if (!info) return g.action.type;
+          if (g.action.type === 'setColor' && g.action.value) {
+            return `${info.icon} ${info.label}: <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${g.action.value};vertical-align:middle"></span>`;
+          }
+          if ((g.action.type === 'setBrushSize' || g.action.type === 'setEraserSize') && g.action.value) {
+            return `${info.icon} ${info.label}: ${g.action.value}`;
+          }
+          if (g.action.type === 'setBackground' && g.action.value) {
+            const bgLabel = g.action.value === '#000000' ? '黑色' : g.action.value === '#ffffff' ? '白色' : '透明';
+            return `${info.icon} ${info.label}: ${bgLabel}`;
+          }
+          return `${info.icon} ${info.label}`;
+        })();
 
         const item = document.createElement('div');
         item.className = 'cg-item';
@@ -642,6 +654,10 @@ export class CustomGestureManager {
       opt.addEventListener('click', () => {
         if (action.needsColor) {
           this._showColorPicker(action);
+        } else if (action.needsSize) {
+          this._showSizePicker(action);
+        } else if (action.needsBackground) {
+          this._showBackgroundPicker(action);
         } else {
           this._recording.action = action.type;
           this._recording.actionValue = null;
@@ -670,6 +686,60 @@ export class CustomGestureManager {
         this._showSaveButton();
       });
       row.appendChild(swatch);
+    }
+  }
+
+  _showSizePicker(action) {
+    const picker = this._panel?.querySelector('#cg-action-picker');
+    if (!picker) return;
+
+    const sizes = action.type === 'setBrushSize'
+      ? [
+          { label: '细 S (2px)', value: 'S' },
+          { label: '中 M (4px)', value: 'M' },
+          { label: '粗 L (12px)', value: 'L' },
+        ]
+      : [
+          { label: '小 (15px)', value: 'S' },
+          { label: '中 (30px)', value: 'M' },
+          { label: '大 (50px)', value: 'L' },
+        ];
+
+    picker.innerHTML = `<h3>选择${action.icon} ${action.label} 档位</h3>`;
+    for (const size of sizes) {
+      const opt = document.createElement('button');
+      opt.className = 'cg-action-option';
+      opt.textContent = size.label;
+      opt.addEventListener('click', () => {
+        this._recording.action = action.type;
+        this._recording.actionValue = size.value;
+        this._showSaveButton();
+      });
+      picker.appendChild(opt);
+    }
+  }
+
+  _showBackgroundPicker(action) {
+    const picker = this._panel?.querySelector('#cg-action-picker');
+    if (!picker) return;
+
+    const backgrounds = [
+      { label: '⬛ 黑色背景', value: '#000000' },
+      { label: '⬜ 白色背景', value: '#ffffff' },
+      { label: '🫥 透明背景', value: 'transparent' },
+    ];
+
+    picker.innerHTML = `<h3>选择${action.icon} 目标背景</h3>`;
+    for (const bg of backgrounds) {
+      const opt = document.createElement('button');
+      opt.className = 'cg-action-option';
+      opt.textContent = bg.label;
+      opt.addEventListener('click', () => {
+        this._recording.action = action.type;
+        this._recording.actionValue = bg.value;
+        this._showSaveButton();
+      });
+      picker.appendChild(opt);
     }
   }
 
