@@ -268,10 +268,10 @@ export class GestureStateMachine {
       this.onGestureChange(this.state, this.prevState);
     }
 
-    // Check for undo pulse: very brief WRITE (< 6 frames, ~200ms) → IDLE
+    // Check for undo pulse: very brief WRITE (< 4 frames, ~100ms of points) → IDLE
     if (this.prevState === Gesture.WRITE && newState === Gesture.IDLE) {
       if (this._writeFrameCount > 0 &&
-          this._writeFrameCount < 6 &&
+          this._writeFrameCount < 4 &&
           now - this._lastUndoTime > this.undoDeadZoneMs) {
         this._lastUndoTime = now;
         if (this.onUndo) this.onUndo();
@@ -296,8 +296,12 @@ export class GestureStateMachine {
         const sx = this.pinchFilterX.filter(midX, ts / 1000);
         const sy = this.pinchFilterY.filter(midY, ts / 1000);
         if (this.onWritePoint) {
-          this.onWritePoint({ x: sx, y: sy });
           this._writeFrameCount++;
+          // Suppress write points during pulse detection window (first 3 frames, ~100ms)
+          // A quick pinch-release for undo won't create any stroke
+          if (this._writeFrameCount >= 4) {
+            this.onWritePoint({ x: sx, y: sy });
+          }
         }
         break;
       }
