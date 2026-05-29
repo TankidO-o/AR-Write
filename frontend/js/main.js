@@ -382,7 +382,7 @@ class App {
     // Crosshair at index fingertip (landmark 8)
     const idx = pt(8);
     const cr = 8; // crosshair radius
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = 'rgba(0,255,136,0.5)';
     ctx.lineWidth = 1;
     // vertical line
     ctx.beginPath();
