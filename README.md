@@ -5,7 +5,7 @@
 ## 快速开始
 
 ### 环境要求
-- Python 3.10+ (推荐使用 conda)
+- Python 3.10+（推荐 3.12；**3.14 通过 ONNX 后端支持**）
 - 带有摄像头的电脑
 - 现代浏览器 (Chrome/Edge 90+)
 
@@ -13,13 +13,18 @@
 
 ```bash
 # 创建 conda 环境（可选）
-conda create -n ar-gesture python=3.10 -y
+conda create -n ar-gesture python=3.12 -y
 conda activate ar-gesture
 
 # 安装 Python 依赖
 cd backend
 pip install -r requirements.txt
+
+# (仅首次使用 ONNX 后端时需要) 转换手部检测模型
+python convert_models.py
 ```
+
+> **Python 3.14 用户**：mediapipe 暂无 3.14 wheel，系统会自动切换到 ONNX Runtime 后端。只需安装 `onnxruntime onnx opencv-python fastapi uvicorn`，然后运行一次 `python convert_models.py` 生成 ONNX 模型即可。
 
 **Windows**: 双击项目根目录的启动文件：
 
@@ -107,5 +112,7 @@ docs/       设计文档与实施计划
 
 ## 技术栈
 
-**后端**: Python, OpenCV, MediaPipe Hands, FastAPI, WebSocket
+**后端**: Python, OpenCV, MediaPipe Hands / ONNX Runtime, FastAPI, WebSocket
 **前端**: HTML5 Canvas 2D, WebSocket API, ES Modules
+
+> 后端的 hand detection 支持双后端自动切换：mediapipe（Python ≤3.12，性能更优）和 ONNX Runtime（任意 Python 版本，包括 3.14+）。详见 `backend/onnx_hand_detector.py`。

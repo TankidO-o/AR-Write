@@ -5,7 +5,7 @@
 ## Quick Start
 
 ### Prerequisites
-- Python 3.10+ (conda recommended)
+- Python 3.10+ (3.12 recommended; **3.14 supported via ONNX backend**)
 - A computer with a webcam
 - Modern browser (Chrome/Edge 90+)
 
@@ -13,13 +13,18 @@
 
 ```bash
 # Create conda environment (optional)
-conda create -n ar-gesture python=3.10 -y
+conda create -n ar-gesture python=3.12 -y
 conda activate ar-gesture
 
 # Install Python dependencies
 cd backend
 pip install -r requirements.txt
+
+# (ONNX backend only — first time setup) Convert the hand detection model
+python convert_models.py
 ```
+
+> **Python 3.14 users**: mediapipe does not have 3.14 wheels yet. The system auto‑falls back to the ONNX Runtime backend. Install `onnxruntime onnx opencv-python fastapi uvicorn`, then run `python convert_models.py` once to generate the ONNX models.
 
 **Windows**: Double-click the launcher files in the project root:
 
@@ -107,5 +112,7 @@ docs/       Design documents and implementation plans
 
 ## Tech Stack
 
-**Backend**: Python, OpenCV, MediaPipe Hands, FastAPI, WebSocket
+**Backend**: Python, OpenCV, MediaPipe Hands / ONNX Runtime, FastAPI, WebSocket
 **Frontend**: HTML5 Canvas 2D, WebSocket API, ES Modules
+
+> The hand detection backend auto‑switches between mediapipe (Python ≤3.12, faster) and ONNX Runtime (any Python version including 3.14+). See `backend/onnx_hand_detector.py`.
