@@ -70,6 +70,7 @@ export class DrawLayer {
 
   endStroke() {
     if (!this.currentStroke) return;
+    this._compact();
     this.strokes.push(this.currentStroke);
     this._mergeToHistory(this.currentStroke);
     this.currentStroke = null;
@@ -143,13 +144,13 @@ export class DrawLayer {
         if (pt !== null) {
           segment.push(pt);
         } else {
-          if (segment.length > 2) {
+          if (segment.length >= 2) {
             newStrokes.push(this._makeFragment(stroke, segment));
           }
           segment = [];
         }
       }
-      if (segment.length > 2) {
+      if (segment.length >= 2) {
         newStrokes.push(this._makeFragment(stroke, segment));
       }
     }
@@ -193,6 +194,19 @@ export class DrawLayer {
         this.historyCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
       }
       this.historyCtx.stroke();
+    }
+  }
+
+  _compact() {
+    // Keep at most 50 erased strokes for undo; discard older ones
+    let erasedCount = 0;
+    for (let i = this.strokes.length - 1; i >= 0; i--) {
+      if (this.strokes[i].erased) {
+        erasedCount++;
+        if (erasedCount > 50) {
+          this.strokes.splice(i, 1);
+        }
+      }
     }
   }
 
