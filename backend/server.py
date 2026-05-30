@@ -36,6 +36,13 @@ from camera import Camera
 from hand_detector import HandDetector
 
 # Keep logging quiet -- only show errors from noisy libraries
+# ---------------------------------------------------------------------------
+# Fix: when packaged with --noconsole, sys.stdout/stderr can be None,
+# which breaks uvicorn's logging config (it calls .isatty() on the stream).
+for _attr in ("stdout", "stderr"):
+    if getattr(sys, _attr) is None:
+        setattr(sys, _attr, open(os.devnull, "w"))
+
 logging.getLogger("uvicorn").setLevel(logging.WARNING)
 logging.getLogger("onnxruntime").setLevel(logging.ERROR)
 
