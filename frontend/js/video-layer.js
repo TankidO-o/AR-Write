@@ -43,7 +43,7 @@ export class VideoLayer {
         return this.stream;
       } catch (e) {
         lastError = e;
-        console.warn(`[VideoLayer] Failed: ${e.name} - ${e.message}`);
+        console.log(`[VideoLayer] Browser camera unavailable (${e.name}: ${e.message}) — this is normal when the backend already owns the camera, falling back to backend stream`);
       }
     }
 
