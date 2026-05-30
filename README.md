@@ -1,147 +1,85 @@
-# AR 手势书写交互系统
+# AR-Write
 
-> 基于计算机视觉的隔空手势书写系统。通过摄像头识别手部关键点，在空气中用不同手势完成书写、擦除、撤销和清空画布等操作。
+**Gesture-based air-writing system** -- write, erase, undo, and clear the canvas using hand gestures captured by your webcam. No keyboard, no mouse, no touchscreen required.
 
-## 快速开始
+---
 
-### 环境要求
-- Python 3.10+（推荐 3.12；**3.14 通过 ONNX 后端支持**）
-- 带有摄像头的电脑
-- 现代浏览器 (Chrome/Edge 90+)
+## Getting Started
 
-### 安装与启动
+### Download and Install
 
-```bash
-# 创建 conda 环境（可选）
-conda create -n ar-gesture python=3.12 -y
-conda activate ar-gesture
+1. Go to the [GitHub Releases](https://github.com/TankidO-o/AR-Write/releases) page
+2. Download the latest **`AR-Write-Setup.exe`**
+3. Double-click the installer and follow the setup wizard
 
-# 安装 Python 依赖
-cd backend
-pip install -r requirements.txt
+That is it -- the installer bundles everything the app needs. No Python, no drivers, no extra steps.
 
-# (仅首次使用 ONNX 后端时需要) 转换手部检测模型
-python convert_models.py
-```
+### System Requirements
 
-> **Python 3.14 用户**：mediapipe 暂无 3.14 wheel，系统会自动切换到 ONNX Runtime 后端。只需安装 `onnxruntime onnx opencv-python fastapi uvicorn`，然后运行一次 `python convert_models.py` 生成 ONNX 模型即可。
+- **Windows** (10 or later)
+- **Webcam** (built-in or USB)
+- No special hardware, no GPU required
 
-**启动**：
+### Launching the App
 
-| 平台 | 方式 |
-|------|------|
-| **Windows** | 双击 `launcher.py`，或在终端运行 `python launcher.py` |
-| **macOS / Linux** | 终端运行 `python launcher.py` |
-| **手动** | `cd backend && python server.py` |
+After installation, launch AR-Write from either:
 
-浏览器自动打开 `http://localhost:8765`。首次进入会弹出悬浮手势指南（点击 `?` 可随时重新查看）。
+- The **Start Menu** shortcut: `AR-Write`
+- The **Desktop** shortcut: `AR-Write`
 
-> `launcher.py` 会自动检测 Python 版本、依赖包、hand detection 后端是否就绪，并给出明确的中文提示。前端已嵌入后端，不再需要单独的 `python -m http.server`。
+The app opens in your default browser. Grant camera permission when prompted, and you are ready to write.
 
-### 打包为安装包（无需安装 Python）
+---
 
-```bash
-pip install pyinstaller
-python build_exe.py
-```
+## Gestures
 
-生成 `dist/AR-Write-Setup.exe`（~150 MB，自包含 Python + ONNX + OpenCV + 前端）。
+| Gesture | Action | What Happens |
+|---|---|---|
+| Pinch: thumb + index finger together | **Write** | Starts drawing immediately. A green crosshair at your fingertip helps you aim. |
+| Five fingers spread open | **Area Erase** | Erases stroke segments inside a circular zone. Entire lines stay intact unless the circle touches them. |
+| Fist held for 1 second | **Clear Canvas** | A ring-shaped progress indicator fills up; release before it completes to cancel, hold through to wipe the canvas. |
+| Quick pinch-then-spread pulse | **Undo** | Reverts the most recent stroke. Fast pinch-and-release (no writing motion). |
 
-用户双击运行后，GUI 安装向导会引导完成：
-1. 欢迎页（注意事项提示）
-2. 许可协议确认
-3. 选择安装目录（默认 `%LOCALAPPDATA%\AR-Write\`）
-4. 进度条安装
-5. 创建快捷方式 + 启动应用
+---
 
-安装后从开始菜单或桌面快捷方式启动，**秒开**——无需每次解压。
+## Toolbar
 
-### 一键发布到 GitHub Release
+A vertical card-style toolbar sits on the left side of the screen, organized into five sections:
 
-```bash
-# 先装 GitHub CLI 并登录（仅一次）
-# winget install GitHub.cli  或  scoop install gh
-gh auth login
+| Section | Controls |
+|---|---|
+| **Color** | 6 preset swatches plus a color picker |
+| **Brush** | S / M / L quick presets plus a slider (2--20 px) |
+| **Eraser** | Small / Medium / Large presets (15 / 30 / 50 px) |
+| **Canvas** | Undo -- Redo -- Clear -- Screenshot |
+| **Gestures** | Help guide -- Calibration -- Custom gestures |
 
-# 一键构建 + 打标签 + 发布
-python release.py                    # 自动版本号 v2026.05.31
-python release.py --version v1.2.0   # 指定版本号
-python release.py --dry-run          # 仅构建，不发布
-```
+Click the background toggle button to cycle between **camera view**, **blackboard**, and **whiteboard** modes. In blackboard/whiteboard mode the camera feed is hidden automatically.
 
-发布后用户直接从 GitHub Releases 下载 `AR-Write-Setup.exe`，双击安装即可。
+---
 
-> `release.py` 会先跑 `build_exe.py` 打包，再推到 GitHub。安装包零依赖——用户只需双击运行一次安装向导。
+## Custom Gestures
 
-## 手势操作
+Open the custom gesture panel from the toolbar (the lightning bolt icon):
 
-| 手势 | 操作 | 说明 |
-|------|------|------|
-| 🤏 拇指与食指捏合 | **书写** | 即时开始，食指尖有绿色十字准星辅助定位 |
-| 🖐️ 五指张开 | **区域擦除** | 仅擦除圆内笔画片段，不删整根线 |
-| ✊ 握拳保持 1 秒 | **清空画布** | L2 环形进度条显示倒计时 |
-| 🤏→张开 快速脉冲 | **撤销** | 快速捏合后松开（不落笔），撤销最近一笔 |
+- **Override** built-in gestures with your own calibration data (10 samples)
+- **Create** new gestures via template matching (3 samples), then bind them to any of 8 actions: switch color, change brush/eraser size, undo, redo, clear canvas, save screenshot, or toggle background
+- **Adjust** the detection threshold per gesture (40--95) and save to local storage
 
-## 工具栏
+---
 
-左侧纵向 5 区卡片式工具栏：
+## Visual Feedback
 
-| 分区 | 功能 |
-|------|------|
-| 🎨 颜色 | 6 预设色块 + 取色器 |
-| 🖌️ 笔刷 | S/M/L 快捷预设 + 滑块微调 (2~20px) |
-| 🧹 橡皮 | 小/中/大 三级预设 (15/30/50px) |
-| 📋 画布 | ↩ 撤销 - ↪ 重做 - ✕ 清空 - 💾 截图 |
-| ⚡ 手势 | ? 手势指南 - ⚙ 校准 - ⚡ 自定义手势 |
+Three layers of feedback keep you informed at all times:
 
-点击 🖼️ 按钮可在**摄像头模式 / 黑板模式 / 白板模式**之间循环切换，黑白板模式下摄像头画面自动隐藏。
+| Layer | Position | Shows |
+|---|---|---|
+| L1 (persistent) | Top-right of canvas | Current gesture icon, name, color, and brush info |
+| L2 (progress) | Center of canvas | Ring-shaped countdown timer (clear-canvas hold) |
+| L3 (transient) | Top of canvas | Action confirmation toast, fades out after 1 second |
 
-## 自定义手势
+---
 
-点击工具栏 ⚡ 按钮打开自定义手势面板：
+## Technology
 
-- **覆写**：用你自己的标定数据（10 次采样）覆盖内置手势
-- **新建**：通过模板匹配创建自定义手势（3 次采样），可绑定 8 种动作
-- 调整每个手势的**触发阈值**（40-95）并保存到本地
-
-可绑定的动作：
-
-| 动作 | 说明 |
-|------|------|
-| 🎨 切换颜色 | 指定目标颜色 |
-| 🖌️ 笔刷大小 | S/M/L 三档 |
-| 🧹 橡皮大小 | 小/中/大 三档 |
-| ↩ 撤销 | 撤销最近一笔 |
-| ↪ 重做 | 恢复被撤销的笔画 |
-| ✕ 清空画布 | 清空整个画布 |
-| 💾 保存截图 | 下载 PNG 截图 |
-| 🖼️ 切换背景 | 摄像头/黑板/白板 |
-
-## 视觉反馈
-
-三层反馈体系时刻告知当前状态：
-
-| 层级 | 位置 | 内容 |
-|------|------|------|
-| L1 持久 | 画布右上角 | 当前手势图标 + 名称 + 颜色/笔刷信息 |
-| L2 进度 | 画布中央 | 环形进度条（清空画布时长按倒计时） |
-| L3 瞬态 | 画布顶部 | 动作完成确认 Toast，1 秒淡出 |
-
-## 项目结构
-
-```
-launcher.py    一键启动入口（开发用）
-setup.py       GUI 安装向导（打包进安装包）
-build_exe.py   构建安装包（onedir → zip → onefile 安装器）
-release.py     一键发布到 GitHub Release
-backend/       Python 后端 (OpenCV + MediaPipe/ONNX + FastAPI，内置前端)
-frontend/      Web 前端 (Canvas 2D + Vanilla JS ES Modules)
-docs/          设计文档与实施计划
-```
-
-## 技术栈
-
-**后端**: Python, OpenCV, MediaPipe Hands / ONNX Runtime, FastAPI, WebSocket
-**前端**: HTML5 Canvas 2D, WebSocket API, ES Modules
-
-> 后端的 hand detection 支持双后端自动切换：mediapipe（Python ≤3.12，性能更优）和 ONNX Runtime（任意 Python 版本，包括 3.14+）。详见 `backend/onnx_hand_detector.py`。
+Built with Python, OpenCV, and MediaPipe hand tracking. Renders via HTML5 Canvas in the browser.
