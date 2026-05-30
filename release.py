@@ -1,18 +1,18 @@
 """
 One-click GitHub Release builder for AR-Write.
 
-Builds a standalone Windows .exe, creates a git tag, and publishes
-a GitHub Release with the .exe as a downloadable asset.
+Builds a Windows GUI installer (.exe), creates a git tag, and publishes
+a GitHub Release with the installer as a downloadable asset.
 
 Prerequisites:
     pip install pyinstaller
     gh auth login          (GitHub CLI, one-time setup)
-    python convert_models.py -- in backend/ (ONNX models must exist)
+    cd backend && python convert_models.py   (ONNX models must exist)
 
 Usage:
     python release.py                    # auto-version from date
     python release.py --version v1.2.0   # specify version tag
-    python release.py --dry-run          # build exe only, skip release
+    python release.py --dry-run          # build installer only, skip release
 """
 
 import argparse
@@ -61,14 +61,14 @@ def check_prerequisites():
 
 
 def build_exe():
-    """Run the PyInstaller build."""
+    """Run the PyInstaller build (produces the GUI installer)."""
     print("=" * 54)
-    print("  Step 1/4: Building AR-Write.exe ...")
+    print("  Step 1/4: Building AR-Write-Setup.exe ...")
     print("=" * 54)
     subprocess.run([sys.executable, os.path.join(ROOT, "build_exe.py")], check=True)
-    exe_path = os.path.join(ROOT, "dist", "AR-Write.exe")
+    exe_path = os.path.join(ROOT, "dist", "AR-Write-Setup.exe")
     if not os.path.isfile(exe_path):
-        print("ERROR: Build failed -- AR-Write.exe not found.")
+        print("ERROR: Build failed -- AR-Write-Setup.exe not found.")
         sys.exit(1)
     size_mb = os.path.getsize(exe_path) / (1024 * 1024)
     print(f"  Built: {exe_path}  ({size_mb:.1f} MB)")
@@ -124,7 +124,7 @@ def create_release(version: str, exe_path: str):
     else:
         body = "Initial release of AR-Write."
 
-    body += f"\n\n**Download**: `AR-Write.exe` (~{os.path.getsize(exe_path) / (1024 * 1024):.0f} MB, self-contained, no Python required)."
+    body += f"\n\n**Download**: `AR-Write-Setup.exe` (~{os.path.getsize(exe_path) / (1024 * 1024):.0f} MB, GUI installer — one-click setup, no Python required)."
 
     # Create release
     subprocess.run(
@@ -152,10 +152,11 @@ def print_summary(version: str):
     print("  Step 4/4: Done!")
     print("=" * 54)
     print(f"  Release:  https://github.com/TankidO-o/AR-Write/releases/tag/{version}")
-    print(f"  Asset:    AR-Write.exe")
+    print(f"  Asset:    AR-Write-Setup.exe")
     print()
-    print("  Users can download and double-click AR-Write.exe —")
-    print("  no Python, pip, or any dependencies required.")
+    print("  Users download and run AR-Write-Setup.exe —")
+    print("  a guided GUI installer that sets up the app in one click.")
+    print("  No Python, pip, or any dependencies required.")
     print("=" * 54)
 
 

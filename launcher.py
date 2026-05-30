@@ -137,15 +137,24 @@ def main():
         _check_critical_deps()
         _check_backend()
 
-    server_py = _get_server_py()
-    if not os.path.isfile(server_py):
-        print(f"ERROR: {server_py} not found.")
-        print("Make sure the 'backend/' directory is present.")
-        sys.exit(1)
-
-    # Forward all arguments to server.py
-    args = [sys.executable, server_py] + sys.argv[1:]
-    subprocess.run(args, cwd=_get_backend_dir())
+    if is_frozen:
+        # Running inside PyInstaller — run server.py in-process to avoid
+        # spawning another copy of this .exe (which would re-enter launcher
+        # and create an infinite fork bomb).
+        backend_dir = _get_backend_dir()
+        sys.path.insert(0, backend_dir)
+        # Patch sys.argv so server.py's argparse picks up user flags
+        import server  # type: ignore[import-not-found]
+        server.main()
+    else:
+        server_py = _get_server_py()
+        if not os.path.isfile(server_py):
+            print(f"ERROR: {server_py} not found.")
+            print("Make sure the 'backend/' directory is present.")
+            sys.exit(1)
+        # Forward all arguments to server.py
+        args = [sys.executable, server_py] + sys.argv[1:]
+        subprocess.run(args, cwd=_get_backend_dir())
 
 
 if __name__ == "__main__":

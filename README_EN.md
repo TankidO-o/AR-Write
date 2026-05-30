@@ -38,14 +38,23 @@ The browser opens automatically at `http://localhost:8765`. A gesture guide over
 
 > `launcher.py` auto-detects your Python version, missing dependencies, and hand-detection backend availability, giving clear guidance in English. The frontend is embedded in the backend -- no separate HTTP server required.
 
-### Build Standalone EXE (no Python required)
+### Build Installer (no Python required for end users)
 
 ```bash
 pip install pyinstaller
 python build_exe.py
 ```
 
-Produces `dist/AR-Write.exe` (~150 MB, self-contained: Python + ONNX + OpenCV + frontend).
+Produces `dist/AR-Write-Setup.exe` (~150 MB, self-contained: Python + ONNX + OpenCV + frontend).
+
+Users double-click the installer and the GUI wizard guides them through:
+1. Welcome page (important notes)
+2. License agreement
+3. Install directory selection (default: `%LOCALAPPDATA%\AR-Write\`)
+4. Progress bar during extraction
+5. Shortcut creation + launch
+
+After install, launch from the Start Menu or Desktop shortcut — **starts instantly** (no extraction on every launch).
 
 ### One-Click GitHub Release
 
@@ -55,12 +64,12 @@ Produces `dist/AR-Write.exe` (~150 MB, self-contained: Python + ONNX + OpenCV + 
 gh auth login
 
 # Build + tag + publish in one command
-python release.py                    # auto version (v2026.05.30)
+python release.py                    # auto version (v2026.05.31)
 python release.py --version v1.2.0   # custom version
 python release.py --dry-run          # build only, skip publishing
 ```
 
-Users then download `AR-Write.exe` directly from GitHub Releases -- double-click and go, zero dependencies.
+Users then download `AR-Write-Setup.exe` directly from GitHub Releases — double-click, install, go.
 
 ## Gestures
 
@@ -119,8 +128,9 @@ Three-layer feedback system keeps you informed:
 ## Project Structure
 
 ```
-launcher.py     One-click entry point
-build_exe.py    Build standalone .exe
+launcher.py     One-click entry point (dev mode)
+setup.py        GUI installer wizard (bundled into Setup.exe)
+build_exe.py    Build installer (onedir → zip → onefile setup)
 release.py      One-click GitHub Release
 backend/       Python backend (OpenCV + MediaPipe/ONNX + FastAPI, serves frontend)
 frontend/      Web frontend (Canvas 2D + Vanilla JS ES Modules)

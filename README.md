@@ -38,14 +38,23 @@ python convert_models.py
 
 > `launcher.py` 会自动检测 Python 版本、依赖包、hand detection 后端是否就绪，并给出明确的中文提示。前端已嵌入后端，不再需要单独的 `python -m http.server`。
 
-### 打包为 EXE（无需安装 Python）
+### 打包为安装包（无需安装 Python）
 
 ```bash
 pip install pyinstaller
 python build_exe.py
 ```
 
-生成 `dist/AR-Write.exe`（~150 MB，自包含 Python + ONNX + OpenCV + 前端）。
+生成 `dist/AR-Write-Setup.exe`（~150 MB，自包含 Python + ONNX + OpenCV + 前端）。
+
+用户双击运行后，GUI 安装向导会引导完成：
+1. 欢迎页（注意事项提示）
+2. 许可协议确认
+3. 选择安装目录（默认 `%LOCALAPPDATA%\AR-Write\`）
+4. 进度条安装
+5. 创建快捷方式 + 启动应用
+
+安装后从开始菜单或桌面快捷方式启动，**秒开**——无需每次解压。
 
 ### 一键发布到 GitHub Release
 
@@ -55,14 +64,14 @@ python build_exe.py
 gh auth login
 
 # 一键构建 + 打标签 + 发布
-python release.py                    # 自动版本号 v2026.05.30
+python release.py                    # 自动版本号 v2026.05.31
 python release.py --version v1.2.0   # 指定版本号
 python release.py --dry-run          # 仅构建，不发布
 ```
 
-发布后用户直接从 GitHub Releases 下载 `AR-Write.exe` 即可使用。
+发布后用户直接从 GitHub Releases 下载 `AR-Write-Setup.exe`，双击安装即可。
 
-> `release.py` 会先跑 `build_exe.py` 打包，再推到 GitHub。`AR-Write.exe` 零依赖——双击即用、无控制台、浏览器自动打开。
+> `release.py` 会先跑 `build_exe.py` 打包，再推到 GitHub。安装包零依赖——用户只需双击运行一次安装向导。
 
 ## 手势操作
 
@@ -121,8 +130,9 @@ python release.py --dry-run          # 仅构建，不发布
 ## 项目结构
 
 ```
-launcher.py    一键启动入口
-build_exe.py   打包为独立 .exe
+launcher.py    一键启动入口（开发用）
+setup.py       GUI 安装向导（打包进安装包）
+build_exe.py   构建安装包（onedir → zip → onefile 安装器）
 release.py     一键发布到 GitHub Release
 backend/       Python 后端 (OpenCV + MediaPipe/ONNX + FastAPI，内置前端)
 frontend/      Web 前端 (Canvas 2D + Vanilla JS ES Modules)
