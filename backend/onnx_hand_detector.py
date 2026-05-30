@@ -325,8 +325,8 @@ class ONNXHandDetector:
     def __init__(
         self,
         model_dir: str | None = None,
-        min_detection_confidence: float = 0.5,
-        min_tracking_confidence: float = 0.5,
+        min_detection_confidence: float = 0.3,
+        min_tracking_confidence: float = 0.3,
     ):
         if not _ORT_AVAILABLE:
             raise RuntimeError(

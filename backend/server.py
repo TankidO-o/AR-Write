@@ -104,7 +104,7 @@ async def websocket_endpoint(ws: WebSocket):
     # the bottleneck.  Detection runs every N frames; intermediate frames
     # reuse the previous result.  This roughly halves CPU at the cost of a
     # ~1-frame detection lag (imperceptible at 30 fps).
-    _detect_every_n = 2
+    _detect_every_n = 3
     _cached_hand = None  # type: ignore[assignment]
 
     async def handle_incoming():
@@ -310,7 +310,7 @@ def main():
         threading.Thread(target=_open_browser, args=(url,), daemon=True).start()
 
     try:
-        camera.start()
+        camera.start(width=320, height=240)
         uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     finally:
         camera.stop()

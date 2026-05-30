@@ -62,8 +62,8 @@ class _MediaPipeHandDetector:
     def __init__(
         self,
         model_path: Optional[str] = None,
-        min_detection_confidence: float = 0.5,
-        min_tracking_confidence: float = 0.5,
+        min_detection_confidence: float = 0.3,
+        min_tracking_confidence: float = 0.3,
     ):
         import mediapipe as mp
         from mediapipe.tasks import python
