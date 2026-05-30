@@ -100,6 +100,12 @@ async def websocket_endpoint(ws: WebSocket):
     frame_count = 0
     fail_count = 0
     fps = 0.0
+    # Frame-skip hand detection to reduce CPU — MediaPipe/ONNX inference is
+    # the bottleneck.  Detection runs every N frames; intermediate frames
+    # reuse the previous result.  This roughly halves CPU at the cost of a
+    # ~1-frame detection lag (imperceptible at 30 fps).
+    _detect_every_n = 2
+    _cached_hand = None  # type: ignore[assignment]
 
     async def handle_incoming():
         try:
@@ -136,7 +142,13 @@ async def websocket_endpoint(ws: WebSocket):
                 _latest_jpeg = jpeg.tobytes()
 
             timestamp_ms = int(time.time() * 1000)
-            hand_data = await asyncio.to_thread(detector.detect, frame, timestamp_ms)
+
+            # Skip hand detection on some frames to save CPU
+            if frame_count % _detect_every_n == 0:
+                hand_data = await asyncio.to_thread(detector.detect, frame, timestamp_ms)
+                _cached_hand = hand_data
+            else:
+                hand_data = _cached_hand
 
             frame_count += 1
             now = time.time()
