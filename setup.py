@@ -279,10 +279,10 @@ class InstallerWizard:
     def _browse_dir(self):
         d = filedialog.askdirectory(title="选择安装目录", initialdir=self.install_dir.get())
         if d:
-            self.install_dir.set(os.path.join(d, "AR-Write"))
+            self.install_dir.set(os.path.abspath(d))
 
     def _update_space(self):
-        d = self.install_dir.get()
+        d = os.path.abspath(self.install_dir.get())
         # Walk up to find existing parent
         parent = d
         while parent and not os.path.isdir(parent):
@@ -299,13 +299,19 @@ class InstallerWizard:
             self._space_label.config(text="无法获取磁盘信息")
 
     def _validate_path(self) -> bool:
-        d = self.install_dir.get().strip()
+        d = os.path.abspath(self.install_dir.get().strip())
         if not d:
             self._status_label.config(text="请输入安装路径")
             return False
-        # Check for problematic chars
-        forbidden = '<>:"|?*'
+        # Check for chars that are never valid in Windows paths.
+        # Note: ':' is valid as the drive-letter separator (D:\) so we
+        # only reject it when it appears beyond position 2.
+        forbidden = '<>"|?*'
         if any(c in d for c in forbidden):
+            self._status_label.config(text="路径包含非法字符")
+            return False
+        # ':' beyond the drive letter is invalid
+        if ":" in d[2:]:
             self._status_label.config(text="路径包含非法字符")
             return False
         # Check disk space (need ~300MB)
@@ -326,7 +332,7 @@ class InstallerWizard:
     # ---- Installation ---------------------------------------------------
 
     def _start_install(self):
-        target = self.install_dir.get()
+        target = os.path.abspath(self.install_dir.get())
 
         # Validate zip exists
         if not os.path.isfile(self.zip_path):
@@ -397,7 +403,7 @@ class InstallerWizard:
     # ---- Finish ---------------------------------------------------------
 
     def _on_finish(self):
-        exe = os.path.join(self.install_dir.get(), "AR-Write.exe")
+        exe = os.path.join(os.path.abspath(self.install_dir.get()), "AR-Write.exe")
         if not os.path.isfile(exe):
             messagebox.showerror("错误", f"找不到 {exe}")
             self.root.destroy()
